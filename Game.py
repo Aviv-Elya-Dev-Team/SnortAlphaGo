@@ -6,7 +6,9 @@ from Board import Board
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+GRAY = (200, 200, 200)
 
 # screen constants
 SCREEN_WIDTH = 600
@@ -23,6 +25,8 @@ class SnortGameVisualizer:
         self.clock = pygame.time.Clock()
 
         self.turn = Board.RED
+
+        self.font = pygame.font.SysFont(None, 36)
 
     def draw_board(self):
         self.screen.fill(WHITE)
@@ -60,17 +64,32 @@ class SnortGameVisualizer:
     def handle_click(self, pos):
         col = pos[0] // CELL_SIZE
         row = pos[1] // CELL_SIZE
-        print("Clicked at row:", row, "col:", col)
 
         if self.board.legal_move(self.turn, (row, col)):
             # make move
             self.board.make_move(self.turn, (row, col))
+            if self.board.end(self.turn):
+                self.draw_text(
+                    "Winner winner chicken dinner!",
+                    GREEN,
+                    (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2),
+                )
 
             # update turn
             if self.turn == Board.RED:
                 self.turn = Board.BLUE
             else:
                 self.turn = Board.RED
+        else:
+            # display error message for 1 second then continue
+            self.draw_text(
+                "Invalid move! Try again", RED, (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+            )
+            pygame.display.flip()
+            pygame.time.wait(1000)
+
+            # redraw board without error message
+            self.draw_board()
 
     def run(self):
         running = True
@@ -85,6 +104,19 @@ class SnortGameVisualizer:
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
+
+    def draw_text(self, text, color, pos):
+        text_surface = self.font.render(text, True, color)
+        text_rect = text_surface.get_rect(center=pos)
+
+        # Add a box behind the text
+        box_width = text_rect.width + 20
+        box_height = text_rect.height + 20
+        box_rect = pygame.Rect(
+            (pos[0] - box_width // 2, pos[1] - box_height // 2), (box_width, box_height)
+        )
+        pygame.draw.rect(self.screen, GRAY, box_rect)
+        self.screen.blit(text_surface, text_rect)
 
 
 def main():
