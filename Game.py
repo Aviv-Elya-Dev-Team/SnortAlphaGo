@@ -11,7 +11,7 @@ BLUE = (0, 0, 255)
 # screen constants
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
-CELL_SIZE = 100
+CELL_SIZE = 60
 
 
 class SnortGameVisualizer:
@@ -68,9 +68,9 @@ class SnortGameVisualizer:
 
             # update turn
             if self.turn == Board.RED:
-                self.turn == Board.BLUE
+                self.turn = Board.BLUE
             else:
-                self.turn == Board.RED
+                self.turn = Board.RED
 
     def run(self):
         running = True
