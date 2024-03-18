@@ -39,7 +39,7 @@ class Board:
 
     def legal_move(self, player, position):
         x, y = position
-        if x not in range(10) or y not in range(10) or self.moves[-1][0] == player:
+        if x not in range(10) or y not in range(10) or (len(self.moves)>0 and self.moves[-1][0] == player):
             return False
         return (
             self.blue_legal_moves[x, y]
