@@ -86,4 +86,13 @@ class Board:
                     (self.board[x,y-1] in [player, EMPTY] or not self.is_in_the_borad(x, y-1)) and \
                     (self.board[x,y+1] in [player, EMPTY] or not self.is_in_the_borad(x, y+1)))
     
-        
+    
+    def end(self, player):
+        return np.all(self.blue_legal_moves==False) if player==RED else np.all(self.red_legal_moves==False)
+    
+    
+    def switch_player(self, player):
+        return RED if player==BLUE else BLUE
+
+            
+             
