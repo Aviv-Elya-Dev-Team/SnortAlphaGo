@@ -31,6 +31,8 @@ class SnortGameVisualizer:
 
         self.font = pygame.font.SysFont(None, 36)
 
+        self.game_concluded = False
+
     def draw_board(self):
         self.screen.fill(WHITE)
         rows = self.board.board.shape[0]
@@ -74,11 +76,7 @@ class SnortGameVisualizer:
 
             # check for winner
             if self.board.end(self.turn):
-                self.draw_text(
-                    "Winner winner chicken dinner!",
-                    GREEN,
-                    (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2),
-                )
+                self.game_concluded = True
 
             # update turn
             self.turn = self.board.switch_player(self.turn)
@@ -122,8 +120,15 @@ class SnortGameVisualizer:
                         self.handle_click(pygame.mouse.get_pos())
             self.draw_board()
             self.draw_illegal_moves(self.turn)
+            if self.game_concluded:
+                self.draw_text(
+                    f"winner winner chicken dinner!",
+                    GREEN,
+                    (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2),
+                )
             pygame.display.flip()
             self.clock.tick(60)
+
         pygame.quit()
 
     def draw_text(self, text, color, pos):
