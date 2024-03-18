@@ -1,38 +1,76 @@
 import pygame
 import sys
+from Board import Board
 
 # Define colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+BLUE = (0, 0, 255)
 
 # screen constants
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
 CELL_SIZE = 100
 
+
 class SnortGameVisualizer:
     def __init__(self, board):
-        self.board = board
+        self.board: Board = board
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Snort Game")
         self.clock = pygame.time.Clock()
 
+        self.turn = Board.RED
+
     def draw_board(self):
         self.screen.fill(WHITE)
-        for row in range(self.board.rows):
-            for col in range(self.board.cols):
-                pygame.draw.rect(self.screen, BLACK, pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE), 1)
-                piece = self.board.grid[row][col]
-                if piece == 'X':
-                    pygame.draw.circle(self.screen, RED, (col * CELL_SIZE + CELL_SIZE // 2, row * CELL_SIZE + CELL_SIZE // 2), CELL_SIZE // 3)
+        rows = self.board.board.shape[0]
+        cols = self.board.board.shape[1]
+        for row in range(rows):
+            for col in range(cols):
+                pygame.draw.rect(
+                    self.screen,
+                    BLACK,
+                    pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+                    1,
+                )
+                piece = self.board.board[row, col]
+
+                if piece == Board.RED:
+                    color = RED
+                elif piece == Board.BLUE:
+                    color = BLUE
+                elif piece == Board.BLACK:
+                    color = BLACK
+                else:
+                    color = WHITE
+
+                pygame.draw.circle(
+                    self.screen,
+                    color,
+                    (
+                        col * CELL_SIZE + CELL_SIZE // 2,
+                        row * CELL_SIZE + CELL_SIZE // 2,
+                    ),
+                    CELL_SIZE // 3,
+                )
 
     def handle_click(self, pos):
         col = pos[0] // CELL_SIZE
         row = pos[1] // CELL_SIZE
         print("Clicked at row:", row, "col:", col)
-        # TODO: build logic using self.board.legal_move etc
+
+        if self.board.legal_move(self.turn, (row, col)):
+            # make move
+            self.board.make_move(self.turn, (row, col))
+
+            # update turn
+            if self.turn == Board.RED:
+                self.turn == Board.BLUE
+            else:
+                self.turn == Board.RED
 
     def run(self):
         running = True
@@ -48,19 +86,14 @@ class SnortGameVisualizer:
             self.clock.tick(60)
         pygame.quit()
 
-class Board:
-    def __init__(self, rows, cols):
-        self.rows = rows
-        self.cols = cols
-        self.grid = [['.' for _ in range(cols)] for _ in range(rows)]
 
 def main():
     # create a board (example board, use real board later)
-    board = Board(6, 6)
-    board.grid[2][3] = 'X'
+    board = Board()
 
     visualizer = SnortGameVisualizer(board)
     visualizer.run()
+
 
 # Example
 if __name__ == "__main__":
