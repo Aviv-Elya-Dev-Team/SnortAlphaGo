@@ -1,6 +1,7 @@
 import pygame
 import sys
 from Board import Board
+import numpy as np, numpy
 
 # Define colors
 WHITE = (255, 255, 255)
@@ -9,6 +10,8 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GRAY = (200, 200, 200)
+
+RED_LEGAL_MOVE = (255, 0, 0, 125)
 
 # screen constants
 SCREEN_WIDTH = 600
@@ -68,6 +71,8 @@ class SnortGameVisualizer:
         if self.board.legal_move(self.turn, (row, col)):
             # make move
             self.board.make_move(self.turn, (row, col))
+
+            # check for winner
             if self.board.end(self.turn):
                 self.draw_text(
                     "Winner winner chicken dinner!",
@@ -76,10 +81,8 @@ class SnortGameVisualizer:
                 )
 
             # update turn
-            if self.turn == Board.RED:
-                self.turn = Board.BLUE
-            else:
-                self.turn = Board.RED
+            self.turn = self.board.switch_player(self.turn)
+
         else:
             # display error message for 1 second then continue
             self.draw_text(
@@ -88,8 +91,25 @@ class SnortGameVisualizer:
             pygame.display.flip()
             pygame.time.wait(1000)
 
-            # redraw board without error message
+            # redraw board without the error message
             self.draw_board()
+
+    def draw_illegal_moves(self, player):
+        legal_move_list = []
+        if player == Board.RED:
+            legal_move_list = self.board.red_legal_moves
+        else:
+            legal_move_list = self.board.blue_legal_moves
+
+        rows, cols = numpy.where(legal_move_list == False)
+        for row, col in zip(rows, cols):
+            if self.board.board[row, col] == Board.EMPTY:
+                pygame.draw.rect(
+                    self.screen,
+                    RED_LEGAL_MOVE,
+                    pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+                    0,
+                )
 
     def run(self):
         running = True
@@ -101,6 +121,7 @@ class SnortGameVisualizer:
                     if pygame.mouse.get_pressed()[0]:  # left mouse button
                         self.handle_click(pygame.mouse.get_pos())
             self.draw_board()
+            self.draw_illegal_moves(self.turn)
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
