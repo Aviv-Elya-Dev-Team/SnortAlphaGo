@@ -129,7 +129,7 @@ class SnortGameVisualizer:
 
             # check for winner
             if self.board.end(self.turn):
-                self.game_concluded = self.turn
+                self.winner = self.turn
 
             # update turn
             self.turn = self.board.switch_player(self.turn)
