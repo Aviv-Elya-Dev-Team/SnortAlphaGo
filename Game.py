@@ -11,8 +11,6 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GRAY = (200, 200, 200)
 
-RED_LEGAL_MOVE = (255, 0, 0, 125)
-
 # screen constants
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
@@ -66,21 +64,25 @@ class SnortGameVisualizer:
                     1,
                 )
 
-    def draw_illegal_moves(self, player):
+    def draw_legal_moves(self, player):
         legal_move_list = []
         if player == Board.RED:
             legal_move_list = self.board.red_legal_moves
         else:
             legal_move_list = self.board.blue_legal_moves
 
-        rows, cols = numpy.where(legal_move_list == False)
+        rows, cols = numpy.where(legal_move_list == True)
         for row, col in zip(rows, cols):
             if self.board.board[row, col] == Board.EMPTY:
-                pygame.draw.rect(
+
+                pygame.draw.circle(
                     self.screen,
-                    (255, 255, 0, 125),  # Yellow with semi-transparent
-                    pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-                    0,
+                    GREEN,
+                    (
+                        col * CELL_SIZE + CELL_SIZE // 2,
+                        row * CELL_SIZE + CELL_SIZE // 2,
+                    ),
+                    CELL_SIZE // 8,
                 )
 
     def run(self):
@@ -88,7 +90,7 @@ class SnortGameVisualizer:
         while running:
             running = self.handle_events()
             self.draw_board()
-            self.draw_illegal_moves(self.turn)
+            self.draw_legal_moves(self.turn)
             if self.winner != -1:
                 if self.winner == Board.RED:
                     color = RED
