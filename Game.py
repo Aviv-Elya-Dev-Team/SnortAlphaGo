@@ -152,6 +152,7 @@ class SnortGameVisualizer:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_BACKSPACE:  # backspace for a hacky unmake move
                     self.board.unmake_last_move()
+                    self.turn = self.board.switch_player(self.turn)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pygame.mouse.get_pressed()[0]:  # left mouse button
                     self.handle_click(pygame.mouse.get_pos())

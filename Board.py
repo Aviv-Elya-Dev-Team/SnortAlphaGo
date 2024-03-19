@@ -76,6 +76,8 @@ class Board:
         return False
 
     def unmake_last_move(self):
+        if len(self.moves) == 0:
+            return
         player, position = self.moves.pop()
         x, y = position
         self.board[x, y] = self.EMPTY
@@ -97,20 +99,20 @@ class Board:
         x, y = position
         return not (
             (
+                not self.is_in_the_borad(x + 1, y) or
                 self.board[x + 1, y] in [player, self.EMPTY]
-                or not self.is_in_the_borad(x + 1, y)
             )
             and (
+                not self.is_in_the_borad(x - 1, y) or
                 self.board[x - 1, y] in [player, self.EMPTY]
-                or not self.is_in_the_borad(x - 1, y)
             )
             and (
+                not self.is_in_the_borad(x, y - 1) or
                 self.board[x, y - 1] in [player, self.EMPTY]
-                or not self.is_in_the_borad(x, y - 1)
             )
             and (
+                not self.is_in_the_borad(x, y + 1) or
                 self.board[x, y + 1] in [player, self.EMPTY]
-                or not self.is_in_the_borad(x, y + 1)
             )
         )
 
