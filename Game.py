@@ -31,7 +31,7 @@ class SnortGameVisualizer:
 
         self.font = pygame.font.SysFont(None, 36)
 
-        self.game_concluded = False
+        self.winner = -1
 
     def draw_board(self):
         self.screen.fill(WHITE)
@@ -39,12 +39,6 @@ class SnortGameVisualizer:
         cols = self.board.board.shape[1]
         for row in range(rows):
             for col in range(cols):
-                pygame.draw.rect(
-                    self.screen,
-                    BLACK,
-                    pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-                    1,
-                )
                 piece = self.board.board[row, col]
 
                 if piece == Board.RED:
@@ -56,41 +50,21 @@ class SnortGameVisualizer:
                 else:
                     color = WHITE
 
-                pygame.draw.circle(
+                # players' nodes on the board
+                pygame.draw.rect(
                     self.screen,
                     color,
-                    (
-                        col * CELL_SIZE + CELL_SIZE // 2,
-                        row * CELL_SIZE + CELL_SIZE // 2,
-                    ),
-                    CELL_SIZE // 3,
+                    pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+                    0,
                 )
 
-    def handle_click(self, pos):
-        col = pos[0] // CELL_SIZE
-        row = pos[1] // CELL_SIZE
-
-        if self.board.legal_move(self.turn, (row, col)):
-            # make move
-            self.board.make_move(self.turn, (row, col))
-
-            # check for winner
-            if self.board.end(self.turn):
-                self.game_concluded = True
-
-            # update turn
-            self.turn = self.board.switch_player(self.turn)
-
-        else:
-            # display error message for 1 second then continue
-            self.draw_text(
-                "Invalid move! Try again", RED, (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-            )
-            pygame.display.flip()
-            pygame.time.wait(1000)
-
-            # redraw board without the error message
-            self.draw_board()
+                # grid
+                pygame.draw.rect(
+                    self.screen,
+                    BLACK,
+                    pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+                    1,
+                )
 
     def draw_illegal_moves(self, player):
         legal_move_list = []
@@ -104,7 +78,7 @@ class SnortGameVisualizer:
             if self.board.board[row, col] == Board.EMPTY:
                 pygame.draw.rect(
                     self.screen,
-                    RED_LEGAL_MOVE,
+                    (255, 255, 0, 125),  # Yellow with semi-transparent
                     pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE),
                     0,
                 )
@@ -115,10 +89,16 @@ class SnortGameVisualizer:
             running = self.handle_events()
             self.draw_board()
             self.draw_illegal_moves(self.turn)
-            if self.game_concluded:
+            if self.winner != -1:
+                if self.winner == Board.RED:
+                    color = RED
+                    winner = "red"
+                else:
+                    color = BLUE
+                    winner = "blue"
                 self.draw_text(
-                    f"winner winner chicken dinner!",
-                    GREEN,
+                    f"{winner} player wins!",
+                    color,
                     (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2),
                 )
             pygame.display.flip()
@@ -138,6 +118,32 @@ class SnortGameVisualizer:
         )
         pygame.draw.rect(self.screen, GRAY, box_rect)
         self.screen.blit(text_surface, text_rect)
+
+    def handle_click(self, pos):
+        col = pos[0] // CELL_SIZE
+        row = pos[1] // CELL_SIZE
+
+        if self.board.legal_move(self.turn, (row, col)):
+            # make move
+            self.board.make_move(self.turn, (row, col))
+
+            # check for winner
+            if self.board.end(self.turn):
+                self.game_concluded = self.turn
+
+            # update turn
+            self.turn = self.board.switch_player(self.turn)
+
+        else:
+            # display error message for 1 second then continue
+            self.draw_text(
+                "Invalid move! Try again", RED, (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+            )
+            pygame.display.flip()
+            pygame.time.wait(1000)
+
+            # redraw board without the error message
+            self.draw_board()
 
     def handle_events(self):
         for event in pygame.event.get():
