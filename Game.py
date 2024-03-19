@@ -112,12 +112,7 @@ class SnortGameVisualizer:
     def run(self):
         running = True
         while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if pygame.mouse.get_pressed()[0]:  # left mouse button
-                        self.handle_click(pygame.mouse.get_pos())
+            running = self.handle_events()
             self.draw_board()
             self.draw_illegal_moves(self.turn)
             if self.game_concluded:
@@ -143,6 +138,18 @@ class SnortGameVisualizer:
         )
         pygame.draw.rect(self.screen, GRAY, box_rect)
         self.screen.blit(text_surface, text_rect)
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_BACKSPACE:  # backspace for a hacky unmake move
+                    self.board.unmake_last_move()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if pygame.mouse.get_pressed()[0]:  # left mouse button
+                    self.handle_click(pygame.mouse.get_pos())
+        return True
 
 
 def main():
