@@ -30,9 +30,10 @@ class Node:
         childs = self.childs
         if child.state.board not in [c.state.board for c in self.childs]:
             self.childs.append(child)
-            child.parent(self)
+            child.parent = self
         self.state.unmake_last_move()
         self.turn = self.state.switch_player(self.turn)
+        return child
         
         
     def encode_state(self, encode_type):
@@ -54,6 +55,18 @@ class Node:
         red_moves[self.state.red_legal_moves == False], blue_moves[self.state.blue_legal_moves == False] = 0, 0
         red_moves, blue_moves = softmax(red_moves.flatten()).reshape(10, 10), softmax(red_moves.flatten()).reshape(10, 10)
         return red_moves, blue_moves, Q
+    
+    
+    def init_P_childs(self, moves_p):
+        for child in self.childs:
+            x, y = moves_p[np.argwhere(self.state.board != child.state.board)][0]
+            self.P.append(moves_p[x, y])
+    
+    
+    def set_P_childs(self, moves_p):
+        for p, child in zip(self.P, self.childs):
+            x, y = moves_p[np.argwhere(self.state.board != child.state.board)][0]
+            p = moves_p[x, y]
         
             
         
