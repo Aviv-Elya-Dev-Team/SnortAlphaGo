@@ -1,7 +1,9 @@
 import Board
 import Node
+import Model
+import numpy as np
 class Agent:
-    def __init__(self, model, encode_type) -> None:
+    def __init__(self, model: Model, encode_type) -> None:
         self.model = model
         self.encode_type = encode_type
     
@@ -23,7 +25,7 @@ class Agent:
                 Node.back_propagation(node, Q)
     
     
-    def best_move_to_de(self, state: Board, turn):
+    def best_move_to_do(self, state: Board, turn):
         node = Node(state, turn)
         red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
         return np.argmax(red_moves_p) if turn == Board.RED else np.argmax(blue_moves_p)
