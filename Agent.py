@@ -1,15 +1,15 @@
-import Board
-import Node
-import Model
+from Board import Board
+from Node import Node
+from Network import Network
 import numpy as np
 class Agent:
-    def __init__(self, model: Model, encode_type) -> None:
+    def __init__(self, model: Network, encode_type) -> None:
         self.model = model
         self.encode_type = encode_type
     
     
     def best_move(self, state: Board, num_iterations):
-        root = Node.Node(state, state.RED)
+        root = Node(state, state.RED)
         # call the network here
         node = root
         for _ in range(num_iterations):
@@ -26,7 +26,7 @@ class Agent:
     
     
     def best_move_to_do(self, state: Board, turn):
-        node = Node.Node(state, turn)
+        node = Node(state, turn)
         red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
         red_moves_p, blue_moves_p = red_moves_p.reshape((10, 10)), blue_moves_p.reshape((10, 10))  
         return np.unravel_index(np.argmax(red_moves_p), red_moves_p.shape) if turn == state.RED else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
