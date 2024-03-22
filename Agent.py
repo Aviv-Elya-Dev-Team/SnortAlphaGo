@@ -9,7 +9,7 @@ class Agent:
     
     
     def best_move(self, state: Board, num_iterations):
-        root = Node(state, Board.RED)
+        root = Node.Node(state, state.RED)
         # call the network here
         node = root
         for _ in range(num_iterations):
@@ -21,14 +21,15 @@ class Agent:
                 red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
                 node.Q = Q
                 node.visits = 1
-                node.init_P_childs(red_moves_p if node.turn == Board.RED else blue_moves_p)
+                node.init_P_childs(red_moves_p if node.turn == state.RED else blue_moves_p)
                 Node.back_propagation(node, Q)
     
     
     def best_move_to_do(self, state: Board, turn):
-        node = Node(state, turn)
+        node = Node.Node(state, turn)
         red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
-        return np.argmax(red_moves_p) if turn == Board.RED else np.argmax(blue_moves_p)
+        red_moves_p, blue_moves_p = red_moves_p.reshape((10, 10)), blue_moves_p.reshape((10, 10))  
+        return np.unravel_index(np.argmax(red_moves_p), red_moves_p.shape) if turn == state.RED else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
          
                 
     
