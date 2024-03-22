@@ -27,7 +27,6 @@ class Node:
         self.state.make_move(self.turn, (x, y))
         self.turn = self.state.switch_player(self.turn)
         child = Node(self.state, self.turn)
-        childs = self.childs
         if child.state.board not in [c.state.board for c in self.childs]:
             self.childs.append(child)
             child.parent = self
@@ -68,5 +67,14 @@ class Node:
             x, y = moves_p[np.argwhere(self.state.board != child.state.board)][0]
             p = moves_p[x, y]
         
+    
+def back_propagation(node: Node, value):
+    if node.turn == BLUE:
+        node.Q += value
+    else:
+        node.Q -= value
+    if node.parent:
+        back_propagation(node.parent, value)
+            
             
         
