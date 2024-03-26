@@ -1,9 +1,10 @@
 import numpy as np
 
-
+EMPTY, BLACK, RED, BLUE = 0, 1, 2, 3
 class Board:
+    
     EMPTY, BLACK, RED, BLUE = 0, 1, 2, 3
-
+    
     def __init__(self) -> None:
         self.board = np.zeros((10, 10), np.uint8)
         self.red_legal_moves = np.ones((10, 10), dtype=np.bool_)

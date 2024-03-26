@@ -20,13 +20,13 @@ def create_snort_model(encode_type):
     hidden_layer2 = Dense(64, activation='relu')(hidden_layer1)
     
     # Output layer for the first 200 outputs
-    output_layer_mse = Dense(200)(hidden_layer2)
+    output_layer_softmax = Dense(200, activation='softmax')(hidden_layer2)
     
     # Output layer for the last output with softmax activation for cross-entropy
-    output_layer_ce = Dense(1, activation='softmax')(hidden_layer2)
+    output_layer_mse = Dense(1, activation='mse')(hidden_layer2)
     
     # Define the model
-    model = Model(inputs=input_layer, outputs=[output_layer_mse, output_layer_ce])
+    model = Model(inputs=input_layer, outputs=[output_layer_softmax, output_layer_mse])
     
     # Compile the model
     model.compile(optimizer=Adam(), 
@@ -38,7 +38,13 @@ def create_snort_model(encode_type):
 
 class Network:
     def __init__(self, encode_type) -> None:
-        self.network = create_snort_model(encode_type)
+        self.encode_type = encode_type
+        self.network = create_snort_model(self.encode_type)
+        self.input_size = 202
+        if encode_type == ENCODE_BOARD:
+            self.input_size = 302
+        elif encode_type == ENCODE_BOTH:
+            self.input_size = 502
 
 
     def predict(self, state):
@@ -51,3 +57,6 @@ class Network:
     
     def load_weight(self, filename):
         self.network.load_weight(filename)
+        
+    def train(self, x, y, init_epoch, epochs):
+        self.network.fit(x, y, initial_epoch=init_epoch, epochs=epochs)
