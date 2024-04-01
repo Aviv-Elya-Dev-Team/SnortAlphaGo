@@ -4,7 +4,7 @@ from Network import Network
 import numpy as np
 from os.path import exists 
 class Agent:
-    def __init__(self, model: Network, encode_type) -> None:
+    def __init__(self, model: Network=Network(ENCODE_LEGAL), encode_type=ENCODE_LEGAL) -> None:
         self.model = model
         self.encode_type = encode_type
         x_train = np.random.random((1, self.model.input_size))
@@ -15,12 +15,11 @@ class Agent:
     
     
     def best_move(self, turn, state: Board, num_iterations, last_epoch, num_epochs):
-        root = Node(state, turn)
-        # call the network here
-        node = root
+        node = Node(state, turn)
         for _ in range(num_iterations):
             if not node:
                 print('fuck')
+                
             while not node.is_leaf():
                 node = node.select_best_child()       
             node = node.add_random_child()
