@@ -1,9 +1,9 @@
-from Board import Board
+from Board import Board, EMPTY, BLACK, RED, BLUE
 from Agent import Agent
 from Network import Network
 from Node import ENCODE_LEGAL
 import numpy as np
-class BotGames:
+class Sim:
     def __init__(self, red_agent: Agent, blue_agent: Agent) -> None:
         self.agents = {2:red_agent, 3:blue_agent}
         self.winner = 0
@@ -24,7 +24,7 @@ class BotGames:
 
 def main():
     r = Agent(Network(ENCODE_LEGAL), ENCODE_LEGAL)
-    bg = BotGames(r, r)
+    bg = Sim(r, r)
     print(bg.run_game())    
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.special import softmax
-from Board import Board
+from Board import Board, EMPTY, BLACK, RED, BLUE
 
 ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
@@ -51,7 +51,7 @@ class Node:
             red_board, blue_board, black_board = np.copy(grid), np.copy(grid), np.copy(grid)
             red_board[grid==self.state.RED], blue_board[grid==self.state.BLUE], black_board[grid==self.state.BLACK] = 1, 1, 1 
             self.state.RED_board[grid!=self.state.RED], blue_board[grid!=self.state.BLUE], black_board[grid!=self.state.BLACK] = 0, 0, 0 
-            return np.concatenate((red_board.flatten(), black_board.flatten(), black_board.flatten(),[1, 0] if self.turn == RED else [0, 1]))
+            return np.concatenate((red_board.flatten(), black_board.flatten(), black_board.flatten(),[1, 0] if self.turn == state.RED else [0, 1]))
         if encode_type==ENCODE_BOTH:
             return np.concatenate((self.encode_state(ENCODE_BOARD)[:-2], self.encode_state(ENCODE_LEGAL)))
             
@@ -76,7 +76,7 @@ class Node:
             p = moves_p[x, y]
     
     
-    def select_best_child(self):
+    def select_best_child(self) -> "Node":
         return self.childs[np.argmax([p*c.Q for p, c in zip(self.P, self.childs)]) if self.turn == self.state.RED\
                            else np.argmin([p*c.Q for p, c in zip(self.P, self.childs)])]
         
