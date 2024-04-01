@@ -15,14 +15,17 @@ class Agent:
     
     
     def best_move(self, turn, state: Board, num_iterations, last_epoch, num_epochs):
+        firstBorad = np.copy(state.board)
         node = Node(state, turn)
         for _ in range(num_iterations):
-            if not node:
-                print('fuck')
-                
             while not node.is_leaf():
-                node = node.select_best_child()       
+                node = node.select_best_child()
+                if not node:
+                    return   
+                if not np.array_equal(firstBorad, state.board):
+                    print('_______________fuckkkk________________')
             node = node.add_random_child()
+            
             red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
             P = np.concatenate((red_moves_p.flatten(), blue_moves_p.flatten()))
             node.Q = Q[0]
@@ -31,6 +34,7 @@ class Agent:
             back_propagation(node, node.Q)
             self.model.train(node.encode_state(self.encode_type), [P.reshape(1, 200), Q.reshape(1, 1)], last_epoch, num_epochs)
             last_epoch += num_epochs
+        
     
     
     def best_move_to_do(self, state: Board, turn):
@@ -43,15 +47,15 @@ class Agent:
     def train(self, num_iterations=10, num_epochs=10):
         last_epoch = 1
         game = Board()
+        counter = 0
         turn = np.random.choice([game.RED, game.BLUE])
         while not game.end(turn):
             self.best_move(turn, game, num_iterations, last_epoch, num_epochs)
             last_epoch += num_epochs
             move = self.best_move_to_do(game, turn)
-            while not game.legal_move(turn, move):
-                move = self.agents[turn].best_move_to_do(game, turn)
             game.make_move(turn, move)
             turn = game.switch_player(turn)
+            
         self.winner = game.switch_player(turn)
         self.model.save_model('model.keras')
 
