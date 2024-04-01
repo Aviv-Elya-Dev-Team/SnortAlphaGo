@@ -160,7 +160,7 @@ class SnortGameVisualizer:
                     self.handle_click(pygame.mouse.get_pos())
         return True
 
-
+"""
 def main():
     # create a board (example board, use real board later)
     board = Board()
@@ -172,3 +172,5 @@ def main():
 # Example
 if __name__ == "__main__":
     main()
+
+"""
