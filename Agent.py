@@ -13,6 +13,8 @@ class Agent:
         y_train1 = np.random.random((1, 1))
         if not exists(f'model{self.encode_type}.keras'):
             self.model.network.fit(x_train, [y_train200, y_train1], epochs=1)
+        else:
+            self.model.load_model(f'model{self.encode_type}.keras')
     
     
     def best_move(self, turn, state: Board, num_iterations, last_epoch, num_epochs):

@@ -25,7 +25,7 @@ class SnortGameVisualizer:
     PVP = 0
     CPU_VS_CPU = 1
     PLAYER_VS_CPU = 2
-    def __init__(self, board, player_type, model_type):
+    def __init__(self, board, player_type, model_type_cpu1=0, model_type_cpu2=0):
         self.board: Board = board
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -43,11 +43,11 @@ class SnortGameVisualizer:
         self.agents = {Board.RED: None, Board.BLUE: None}
         
         if (self.player_type == self.PLAYER_VS_CPU):
-            self.agents[Board.RED] = Agent()
+            self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
             self.agents[Board.BLUE] = "Player"
         elif self.player_type == self.CPU_VS_CPU:
-            self.agents[Board.RED] = Agent(Network(model_type))
-            self.agents[Board.BLUE] = Agent()
+            self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
+            self.agents[Board.BLUE] = Agent(Network(model_type_cpu2), model_type_cpu2)
 
     def draw_board(self):
         self.screen.fill(WHITE)
@@ -200,8 +200,12 @@ class SnortGameVisualizer:
 def main():
     # create a board (example board, use real board later)
     board = Board()
-
-    visualizer = SnortGameVisualizer(board,SnortGameVisualizer.PLAYER_VS_CPU, argv[1] if len(argv)==2 else 0)
+    if len(argv)==2:
+        visualizer = SnortGameVisualizer(board, int(argv[1]))
+    if len(argv)==3:
+        visualizer = SnortGameVisualizer(board, int(argv[1]), int(argv[2]))
+    if len(argv)==4:
+        visualizer = SnortGameVisualizer(board, int(argv[1]), int(argv[2]), int(argv[3]))
     visualizer.run()
 
 
