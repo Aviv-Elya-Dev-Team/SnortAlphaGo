@@ -47,10 +47,10 @@ class Node:
             grid = self.state.board
             red_board, blue_board, black_board = np.copy(grid), np.copy(grid), np.copy(grid)
             red_board[grid==self.state.RED], blue_board[grid==self.state.BLUE], black_board[grid==self.state.BLACK] = 1, 1, 1 
-            self.state.RED_board[grid!=self.state.RED], blue_board[grid!=self.state.BLUE], black_board[grid!=self.state.BLACK] = 0, 0, 0 
+            red_board[grid!=self.state.RED], blue_board[grid!=self.state.BLUE], black_board[grid!=self.state.BLACK] = 0, 0, 0 
             return np.concatenate((red_board.flatten(), black_board.flatten(), black_board.flatten(),[1, 0] if self.turn == RED else [0, 1])).reshape(-1, 302)
         if encode_type==ENCODE_BOTH:
-            return np.concatenate((self.encode_state(ENCODE_BOARD)[:-2], self.encode_state(ENCODE_LEGAL))).reshape(-1, 502)
+            return np.concatenate((self.encode_state(ENCODE_BOARD)[:,:-2], self.encode_state(ENCODE_LEGAL)), axis=1).reshape(-1, 502)
             
     
     def decode_state(self, vector):
