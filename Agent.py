@@ -64,10 +64,10 @@ def main():
     encode_type = ENCODE_LEGAL
     if len(argv)==2:
         encode_type = int(argv[1])
-    model = Network(ENCODE_LEGAL)
+    model = Network(encode_type)
     if exists(f'model{encode_type}.keras'):
         model.load_model(f'model{encode_type}.keras') 
-    r = Agent(model, ENCODE_LEGAL)
+    r = Agent(model, encode_type)
     r.train()
     
 
