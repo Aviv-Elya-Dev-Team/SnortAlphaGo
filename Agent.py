@@ -23,7 +23,7 @@ class Agent:
                 if not node:
                     return   
                 if not np.array_equal(firstBorad, state.board):
-                    print('_______________fuckkkk________________')
+                    print('but why??')
             node = node.add_random_child()
             
             red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
