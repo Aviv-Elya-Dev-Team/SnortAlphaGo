@@ -3,6 +3,7 @@ from Node import Node, back_propagation, ENCODE_BOTH, ENCODE_LEGAL, ENCODE_BOARD
 from Network import Network
 import numpy as np
 from os.path import exists 
+from sys import argv
 class Agent:
     def __init__(self, model: Network=Network(ENCODE_LEGAL), encode_type=ENCODE_LEGAL) -> None:
         self.model = model
@@ -10,7 +11,7 @@ class Agent:
         x_train = np.random.random((1, self.model.input_size))
         y_train200 = np.random.random((1, 200))
         y_train1 = np.random.random((1, 1))
-        if not exists('model.keras'):
+        if not exists(f'model{self.encode_type}.keras'):
             self.model.network.fit(x_train, [y_train200, y_train1], epochs=1)
     
     
@@ -57,12 +58,15 @@ class Agent:
             turn = game.switch_player(turn)
             
         self.winner = game.switch_player(turn)
-        self.model.save_model('model.keras')
+        self.model.save_model(f'model{self.encode_type}.keras')
 
 def main():
+    encode_type = ENCODE_LEGAL
+    if len(argv)==2:
+        encode_type = int(argv[1])
     model = Network(ENCODE_LEGAL)
-    if exists('model.keras'):
-        model.load_model('model.keras') 
+    if exists(f'model{encode_type}.keras'):
+        model.load_model(f'model{encode_type}.keras') 
     r = Agent(model, ENCODE_LEGAL)
     r.train()
     
