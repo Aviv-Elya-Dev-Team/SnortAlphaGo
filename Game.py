@@ -2,7 +2,9 @@ import pygame
 import sys
 from Board import Board
 from Agent import Agent
+from Network import Network
 import numpy as np, numpy
+from sys import argv
 import time
 
 # Define colors
@@ -23,7 +25,7 @@ class SnortGameVisualizer:
     PVP = 0
     CPU_VS_CPU = 1
     PLAYER_VS_CPU = 2
-    def __init__(self, board, player_type):
+    def __init__(self, board, player_type, model_type):
         self.board: Board = board
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -44,7 +46,7 @@ class SnortGameVisualizer:
             self.agents[Board.RED] = Agent()
             self.agents[Board.BLUE] = "Player"
         elif self.player_type == self.CPU_VS_CPU:
-            self.agents[Board.RED] = Agent()
+            self.agents[Board.RED] = Agent(Network(model_type))
             self.agents[Board.BLUE] = Agent()
 
     def draw_board(self):
@@ -199,7 +201,7 @@ def main():
     # create a board (example board, use real board later)
     board = Board()
 
-    visualizer = SnortGameVisualizer(board,SnortGameVisualizer.PLAYER_VS_CPU)
+    visualizer = SnortGameVisualizer(board,SnortGameVisualizer.PLAYER_VS_CPU, argv[1] if len(argv)==2 else 0)
     visualizer.run()
 
 
