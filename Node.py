@@ -14,12 +14,21 @@ class Node:
         self.visits = 0
         self.turn = turn
         self.unexpolred_moves = state.red_legal_moves if turn==RED else state.blue_legal_moves
+
     
-    def increase_visits(self):
-        self.visits+=1
+    def calculate_P(self):
+        result = np.zeros((10,10))
+        all_visits = sum([child.visit for child in self.childs])    
+        for p, child in zip(self.P, self.childs):
+            loc = p[0]
+            result[loc] = child.visits/all_visits
+        flattened = result.flatten()
+        return np.concatenate([np.zeros_like(flattened), flattened]) if self.turn == BLUE else np.concatenate([flattened ,np.zeros_like(flattened)])
+        
+
     
-    
-    def add_random_child(self):
+    def add_random_child(self, encode_type, model):
+        # add child
         legal_mat = self.unexpolred_moves
         legal_indices = np.argwhere(legal_mat==True) 
         random_index = np.random.choice(len(np.argwhere(legal_mat==True)))
@@ -34,9 +43,18 @@ class Node:
         else:
             child = None
         self.state.unmake_last_move()
+
         self.turn = self.state.switch_player(self.turn)
         if not child:
             return self.add_random_child()
+        
+
+        red_moves_p, blue_moves_p, Q = self.decode_state(model.predict(self.encode_state(encode_type)))
+        P = np.concatenate((red_moves_p.flatten(), blue_moves_p.flatten()))
+        self.Q = Q[0]
+        moves_p = red_moves_p if self.turn == RED else blue_moves_p
+        self.P.append([(x, y), moves_p[x, y]])
+
         return child
         
         
@@ -66,14 +84,8 @@ class Node:
         for child in self.childs:
             x, y = moves_p[np.argwhere(self.state.board != child.state.board)][0]
             self.P.append(moves_p[x, y])
-    
-    
-    def set_P_childs(self, moves_p):
-        for p, child in zip(self.P, self.childs):
-            x, y = moves_p[np.argwhere(self.state.board != child.state.board)][0]
-            p = moves_p[x, y]
-    
-    
+
+       
     def select_best_child(self) -> "Node":
         if len(self.childs)==0 or len(self.P)==0:
             return None
@@ -88,6 +100,8 @@ class Node:
         
     
 def back_propagation(node: Node, value):
+    #TODO: maybe negative Q is bad 
+    node.visits += 1
     node.Q += value
     if node.parent:
         back_propagation(node.parent, value)
