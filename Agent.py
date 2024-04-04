@@ -25,9 +25,11 @@ class Agent:
         firstBorad = np.copy(state.board)
         node: Node = Node(state, turn)
 
+        C = 0.8
+
         for _ in range(num_iterations):
             while not node.is_leaf():
-                node = node.select_best_child()
+                node = node.select_child_PUCT(C)
                 if not node:
                     return   
                 if not np.array_equal(firstBorad, state.board):
