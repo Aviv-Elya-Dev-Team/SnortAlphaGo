@@ -126,3 +126,6 @@ class Board:
 
     def switch_player(self, player):
         return self.RED if player == self.BLUE else self.BLUE
+    
+    def reward(self):
+        return np.count_nonzero(self.red_legal_moves) - np.count_nonzero(self.blue_legal_moves)

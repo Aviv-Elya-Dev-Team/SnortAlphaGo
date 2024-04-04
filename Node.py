@@ -88,9 +88,6 @@ class Node:
         
     
 def back_propagation(node: Node, value):
-    if node.turn == BLUE:
-        node.Q += value
-    else:
-        node.Q -= value
+    node.Q += value
     if node.parent:
         back_propagation(node.parent, value)

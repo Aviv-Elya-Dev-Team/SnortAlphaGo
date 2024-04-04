@@ -32,10 +32,11 @@ class Agent:
             red_moves_p, blue_moves_p, Q = node.decode_state(self.model.predict(node.encode_state(self.encode_type)))
             P = np.concatenate((red_moves_p.flatten(), blue_moves_p.flatten()))
             node.Q = Q[0]
-            node.visits = 1
+            real_Q = np.array([state.reward()]).reshape(1, 1)
+            node.visits += 1
             node.init_P_childs(red_moves_p if node.turn == state.RED else blue_moves_p)
             back_propagation(node, node.Q)
-            self.model.train(node.encode_state(self.encode_type), [P.reshape(1, 200), Q.reshape(1, 1)], last_epoch, num_epochs)
+            self.model.train(node.encode_state(self.encode_type), [P.reshape(1, 200), real_Q], last_epoch, num_epochs)
             last_epoch += num_epochs
         
     
