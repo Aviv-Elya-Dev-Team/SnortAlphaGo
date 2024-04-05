@@ -4,6 +4,7 @@ from keras.layers import Input, Dense
 from keras.losses import categorical_crossentropy, mean_squared_error
 from keras.optimizers import Adam
 from Node import ENCODE_BOARD, ENCODE_LEGAL, ENCODE_BOTH
+
 def create_snort_model(encode_type):
    
     # Define input layer

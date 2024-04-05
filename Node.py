@@ -2,6 +2,7 @@ import numpy as np
 from scipy.special import softmax
 from Board import Board, EMPTY, BLACK, RED, BLUE
 from typing import List
+import copy
 
 ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
@@ -21,7 +22,7 @@ class Node:
 
     def calculate_P(self):
         result = np.zeros((10, 10))
-        all_visits = sum([child.visit for child in self.childs])
+        all_visits = sum([child.visits for child in self.childs])
         for p, child in zip(self.P, self.childs):
             loc = p[0]
             result[loc] = child.visits / all_visits
@@ -39,19 +40,15 @@ class Node:
         random_index = np.random.choice(len(np.argwhere(legal_mat == True)))
         x, y = legal_indices[random_index]
         self.unexpolred_moves[x, y] = False
+
+        # insert to self.childs
         self.state.make_move(self.turn, (x, y))
         self.turn = self.state.switch_player(self.turn)
-        child = Node(self.state, self.turn)
-        if child.state.board not in [c.state.board for c in self.childs]:
-            self.childs.append(child)
-            child.parent = self
-        else:
-            child = None
+        child = Node(copy.deepcopy(self.state), self.turn)
+        self.childs.append(child)
         self.state.unmake_last_move()
 
         self.turn = self.state.switch_player(self.turn)
-        if not child:
-            return self.add_random_child()
 
         red_moves_p, blue_moves_p, Q = self.decode_state(
             model.predict(self.encode_state(encode_type))

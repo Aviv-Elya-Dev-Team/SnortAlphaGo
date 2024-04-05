@@ -23,25 +23,27 @@ class Agent:
     
     def best_move(self, turn, state: Board, num_iterations, last_epoch, num_epochs):
         firstBorad = np.copy(state.board)
-        node: Node = Node(state, turn)
+        root: Node = Node(state, turn)
+        node = root
 
         C = 0.8
 
         for _ in range(num_iterations):
             while not node.is_leaf():
-                node = node.select_child_PUCT(C)
+                node = root.select_child_PUCT(C)
                 if not node:
                     return   
                 if not np.array_equal(firstBorad, state.board):
                     print('but why??')
-            node = node.add_random_child(self.encode_type, self.model)
+            new_node = node.add_random_child(self.encode_type, self.model)
 
-            back_propagation(node, node.Q)
+            back_propagation(new_node, new_node.Q)
 
             real_Q = np.array([state.reward()]).reshape(1, 1)
             train_P = node.calculate_P()
             self.model.train(node.encode_state(self.encode_type), [train_P.reshape(1, 200), real_Q], last_epoch, num_epochs)
             last_epoch += num_epochs
+            node = root
     
     def best_move_to_do(self, state: Board, turn):
         node = Node(state, turn)
@@ -50,7 +52,7 @@ class Agent:
         return np.unravel_index(np.argmax(red_moves_p), red_moves_p.shape) if turn == state.RED else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
     
     
-    def train(self, num_iterations=10, num_epochs=10):
+    def train(self, num_iterations=2000, num_epochs=10):
         last_epoch = 1
         game = Board()
         counter = 0
