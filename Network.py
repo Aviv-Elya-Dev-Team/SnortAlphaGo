@@ -47,7 +47,7 @@ class Network:
             self.input_size = 502
 
     def predict(self, state):
-        return self.network.predict(state)
+        return self.network.predict(state, verbose=0)
 
     def save_model(self, filename):
         self.network.save(filename)
@@ -61,4 +61,4 @@ class Network:
         )
 
     def train(self, x, y, init_epoch, epochs):
-        self.network.fit(x, y, epochs=epochs)
+        self.network.fit(x, y, epochs=epochs, verbose=0, use_multiprocessing=True)
