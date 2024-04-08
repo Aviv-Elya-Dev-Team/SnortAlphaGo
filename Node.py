@@ -42,9 +42,10 @@ class Node:
         self.unexpolred_moves[x, y] = False
 
         # insert to self.childs
-        self.state.make_move(self.turn, (x, y))
         self.turn = self.state.switch_player(self.turn)
+        self.state.make_move(self.turn, (x, y))
         child = Node(copy.deepcopy(self.state), self.turn)
+        child.parent = self
         self.childs.append(child)
         self.state.unmake_last_move()
 

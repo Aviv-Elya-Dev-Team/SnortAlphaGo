@@ -83,7 +83,7 @@ class Agent:
             else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
         )
 
-    def train(self, log_progress={}, num_iterations=20, num_epochs=10):
+    def train(self, log_progress={}, num_iterations=1000, num_epochs=10):
         last_epoch = 1
         game = Board()
         turn = np.random.choice([game.RED, game.BLUE])
