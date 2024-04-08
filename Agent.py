@@ -11,7 +11,7 @@ import tensorflow as tf
 
 import copy
 
-progress = {"progress": 0}
+progress = {"progress": 0, "thread_running": True}
 
 
 class Agent:
@@ -83,7 +83,7 @@ class Agent:
             else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
         )
 
-    def train(self, log_progress={}, num_iterations=10, num_epochs=10):
+    def train(self, log_progress={}, num_iterations=20, num_epochs=10):
         last_epoch = 1
         game = Board()
         turn = np.random.choice([game.RED, game.BLUE])
@@ -111,18 +111,19 @@ def main():
         model.load_model(f"model{encode_type}.keras")
     r = Agent(model, encode_type)
 
-    stop_event = threading.Event()
-    timer_thread = threading.Thread(target=timer, args=(stop_event))
+    timer_thread = threading.Thread(target=timer)
     timer_thread.start()
+
     r.train(log_progress=progress)
-    stop_event.set()
+
+    progress["thread_running"] = False
     timer_thread.join()  # Wait for the timer thread to finish
-    print("done")
+    print("\ndone")
 
 
 def timer():
     start_time = time.time()
-    while True:
+    while progress["thread_running"]:
         elapsed_time = int(time.time() - start_time)
         print(
             f"\rtraining...{elapsed_time} | Progress: {progress['progress']}",
