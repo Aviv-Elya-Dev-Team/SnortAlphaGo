@@ -128,4 +128,5 @@ class Board:
         return self.RED if player == self.BLUE else self.BLUE
     
     def reward(self):
+        #TODO: maybe check who bigger becuase bigger is better and then give bigger +1
         return np.count_nonzero(self.red_legal_moves) - np.count_nonzero(self.blue_legal_moves)
