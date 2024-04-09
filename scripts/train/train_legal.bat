@@ -1,4 +1,4 @@
 @echo off
 :loop
-py Agent.py 1
+python ../../Agent.py 0
 goto loop
