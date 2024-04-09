@@ -28,7 +28,7 @@ class Agent:
         x_train = np.random.random((1, self.model.input_size))
         y_train200 = np.random.random((1, 200))
         y_train1 = np.random.random((1, 1))
-        if not exists(f"model{self.encode_type}.keras"):
+        if not exists(f"models/model{self.encode_type}.keras"):
             self.model.network.fit(
                 x_train,
                 [y_train200, y_train1],
@@ -37,7 +37,7 @@ class Agent:
                 use_multiprocessing=True,
             )
         else:
-            self.model.load_model(f"model{self.encode_type}.keras")
+            self.model.load_model(f"models/model{self.encode_type}.keras")
             self.model.compile_model()
 
     def best_move(self, turn, state: Board, num_iterations, last_epoch, num_epochs):
@@ -99,7 +99,7 @@ class Agent:
             log_progress["progress"] += 1
 
         self.winner = game.switch_player(turn)
-        self.model.save_model(f"model{self.encode_type}.keras")
+        self.model.save_model(f"models/model{self.encode_type}.keras")
 
 
 def main():
@@ -107,8 +107,8 @@ def main():
     if len(argv) == 2:
         encode_type = int(argv[1])
     model = Network(encode_type)
-    if exists(f"model{encode_type}.keras"):
-        model.load_model(f"model{encode_type}.keras")
+    if exists(f"models/model{encode_type}.keras"):
+        model.load_model(f"models/model{encode_type}.keras")
     r = Agent(model, encode_type)
 
     timer_thread = threading.Thread(target=timer)
