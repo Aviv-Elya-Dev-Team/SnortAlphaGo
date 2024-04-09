@@ -1,7 +1,7 @@
 from Board import Board, EMPTY, BLACK, RED, BLUE
 from Node import Node, back_propagation, ENCODE_BOTH, ENCODE_LEGAL, ENCODE_BOARD
 from Network import Network
-import numpy as np
+import numpy as np, numpy
 from os.path import exists
 from sys import argv
 import os
@@ -12,6 +12,93 @@ import tensorflow as tf
 import copy
 
 progress = {"progress": 0, "thread_running": True}
+
+
+class MCTSAgent:
+    def __init__(self, game: Board, args, parent=None, turn=None) -> None:
+        self.game = game
+        self.args = args
+
+        self.parent = parent
+        self.turn = turn
+
+    def best_move(self, state, num_iterations):
+        root = Node(self.game, self.turn)
+
+        C = 0.8
+
+        for _ in num_iterations:
+            # selection
+            node = self.select(
+                root,
+            )
+            # expansion
+            self.expand()
+            # simulation
+            self.simulation()
+            # back propagation
+            self.back_propagation()
+
+    def select(self, root: Node, method, *args):
+        result_node = root
+        # while the nodes on the way are already dunzo, but the position is ongoing
+        # (explored all moves = dunzo)
+        while len(result_node.unexpolred_moves) == 0 and not result_node.state.end():
+            node = method(*args, node=result_node)
+            if node == None:
+                break
+
+            result_node = node
+
+        return result_node
+
+    def expand(self, node: Node):
+        new_move = node.unexpolred_moves.pop()
+        game_clone = copy.deepcopy(node.state)
+        game_clone.make_move(new_move)
+        new_node = Node(game_clone, node)
+        node.children.append(new_node)
+        return new_node
+
+    def simulation(self):
+        pass
+
+    def back_propagation(self):
+        pass
+
+    def select_child_PUCT(self, c, node: Node):
+
+        def calculate_PUCT(parent: "Node", child_index: int, c):
+            return parent.childs[child_index].Q + c * parent.P[child_index][1] * (
+                np.sqrt(parent.visits) / parent.childs[child_index].visits
+            )
+
+        best_child = None
+        best_PUCT = 0
+        for child_index in range(len(node.childs)):
+            current_puct = calculate_PUCT(node, child_index, c)
+            if current_puct > best_PUCT:
+                best_PUCT = current_puct
+                best_child = node.childs[child_index]
+
+        return best_child
+
+    def select_child_UCT(self, c, node: Node):
+
+        def calculate_UCT(parent: Node, child: Node, c):
+            return (child.Q / child.visits) + c * numpy.sqrt(
+                numpy.log(parent.visits) / child.visits
+            )
+
+        best_child = None
+        best_UCT = 0
+        for child in node.children:
+            current_uct = calculate_UCT(node, child, c)
+            if current_uct > best_UCT:
+                best_UCT = current_uct
+                best_child = child
+
+        return best_child
 
 
 class Agent:
