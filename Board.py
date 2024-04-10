@@ -1,10 +1,12 @@
 import numpy as np
 
 EMPTY, BLACK, RED, BLUE = 0, 1, 2, 3
+
+
 class Board:
-    
-    EMPTY, BLACK, RED, BLUE = 0, 1, 2, 3
-    
+
+    EMPTY, BLACK, RED, BLUE, ONGOING = 0, 1, 2, 3, 5
+
     def __init__(self) -> None:
         self.board = np.zeros((10, 10), np.uint8)
         self.red_legal_moves = np.ones((10, 10), dtype=np.bool_)
@@ -40,7 +42,11 @@ class Board:
 
     def legal_move(self, player, position):
         x, y = position
-        if x not in range(10) or y not in range(10) or (len(self.moves)>0 and self.moves[-1][0] == player):
+        if (
+            x not in range(10)
+            or y not in range(10)
+            or (len(self.moves) > 0 and self.moves[-1][0] == player)
+        ):
             return False
         return (
             self.blue_legal_moves[x, y]
@@ -100,20 +106,20 @@ class Board:
         x, y = position
         return not (
             (
-                not self.is_in_the_borad(x + 1, y) or
-                self.board[x + 1, y] in [player, self.EMPTY]
+                not self.is_in_the_borad(x + 1, y)
+                or self.board[x + 1, y] in [player, self.EMPTY]
             )
             and (
-                not self.is_in_the_borad(x - 1, y) or
-                self.board[x - 1, y] in [player, self.EMPTY]
+                not self.is_in_the_borad(x - 1, y)
+                or self.board[x - 1, y] in [player, self.EMPTY]
             )
             and (
-                not self.is_in_the_borad(x, y - 1) or
-                self.board[x, y - 1] in [player, self.EMPTY]
+                not self.is_in_the_borad(x, y - 1)
+                or self.board[x, y - 1] in [player, self.EMPTY]
             )
             and (
-                not self.is_in_the_borad(x, y + 1) or
-                self.board[x, y + 1] in [player, self.EMPTY]
+                not self.is_in_the_borad(x, y + 1)
+                or self.board[x, y + 1] in [player, self.EMPTY]
             )
         )
 
@@ -124,9 +130,19 @@ class Board:
             else np.all(self.red_legal_moves == False)
         )
 
+    def outcome(self, turn):
+        if turn == BLUE and np.all(self.blue_legal_moves == False):
+            return RED
+        elif turn == RED and np.all(self.red_legal_moves == False):
+            return BLUE
+        else:
+            return Board.ONGOING
+
     def switch_player(self, player):
         return self.RED if player == self.BLUE else self.BLUE
-    
+
     def reward(self):
-        #TODO: maybe check who bigger becuase bigger is better and then give bigger +1
-        return np.count_nonzero(self.red_legal_moves) - np.count_nonzero(self.blue_legal_moves)
+        # TODO: maybe check who bigger becuase bigger is better and then give bigger +1
+        return np.count_nonzero(self.red_legal_moves) - np.count_nonzero(
+            self.blue_legal_moves
+        )

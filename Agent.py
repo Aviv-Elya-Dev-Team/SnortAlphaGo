@@ -4,10 +4,9 @@ from Network import Network
 import numpy as np, numpy
 from os.path import exists
 from sys import argv
-import os
 import time
 import threading
-import tensorflow as tf
+import random
 
 import copy
 
@@ -15,35 +14,49 @@ progress = {"progress": 0, "thread_running": True}
 
 
 class MCTSAgent:
-    def __init__(self, game: Board, args, parent=None, turn=None) -> None:
+    def __init__(self, game: Board, turn=RED) -> None:
         self.game = game
-        self.args = args
-
-        self.parent = parent
         self.turn = turn
 
-    def best_move(self, state, num_iterations):
+    def best_move_to_do(self, game, turn, num_iterations=1000):
+        self.game = game
+        self.turn = turn
         root = Node(self.game, self.turn)
 
         C = 0.8
 
-        for _ in num_iterations:
+        for _ in range(num_iterations):
             # selection
-            node = self.select(
-                root,
-            )
+            node = self.select(root, self.select_child_UCT, C)
+
             # expansion
-            self.expand()
+            if node.state.outcome(node.state.switch_player(self.turn)) == Board.ONGOING:
+                new_node = self.expand(node)
+            else:
+                new_node = node
             # simulation
-            self.simulation()
+            outcome = self.simulate(new_node)
             # back propagation
-            self.back_propagation()
+            self.update_backwards(new_node, outcome)
+
+        # return best child (ratio between wins and visits)
+        best_child = max(
+            root.childs, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
+        )
+
+        return best_child.state.moves[-1][1]
 
     def select(self, root: Node, method, *args):
         result_node = root
         # while the nodes on the way are already dunzo, but the position is ongoing
         # (explored all moves = dunzo)
-        while len(result_node.unexpolred_moves) == 0 and not result_node.state.end():
+        while (
+            len(np.argwhere(result_node.unexpolred_moves == True)) == 0
+            and result_node.state.outcome(
+                result_node.state.switch_player(result_node.turn)
+            )
+            == Board.ONGOING
+        ):
             node = method(*args, node=result_node)
             if node == None:
                 break
@@ -53,18 +66,64 @@ class MCTSAgent:
         return result_node
 
     def expand(self, node: Node):
-        new_move = node.unexpolred_moves.pop()
+        # set unexplored
+        new_move = self._get_next_unexplored_move(node)
+        node.unexpolred_moves[new_move] = False
+
+        # create game clone
+        node.state.make_move(node.state.switch_player(node.turn), new_move)
         game_clone = copy.deepcopy(node.state)
-        game_clone.make_move(new_move)
-        new_node = Node(game_clone, node)
-        node.children.append(new_node)
+
+        # create child and add to parent (node)
+        new_node = Node(game_clone, node.turn)
+        new_node.parent = node
+        node.childs.append(new_node)
         return new_node
 
-    def simulation(self):
-        pass
+    def _get_next_unexplored_move(self, node: Node):
+        legal_mat = node.unexpolred_moves
+        legal_indices = np.argwhere(legal_mat == True)
+        indices = len(np.argwhere(legal_mat == True))
+        random_index = np.random.choice(indices)
+        x, y = legal_indices[random_index]
+        return (x, y)
 
-    def back_propagation(self):
-        pass
+    # i looked forwared in time, i saw 14,000,605 futures.
+    def simulate(self, node: Node):
+        # simulate making random moves until the game concludes
+        game_clone = copy.deepcopy(node.state)
+        turn = node.turn
+        outcome = game_clone.outcome(turn)
+        while outcome == Board.ONGOING:
+            moves = (
+                game_clone.red_legal_moves
+                if turn == RED
+                else game_clone.blue_legal_moves
+            )
+
+            # make a random move
+            true_indices = np.transpose(np.where(moves == True))
+            if len(true_indices) != 0:
+                random_move = tuple(
+                    true_indices[np.random.randint(0, len(true_indices))]
+                )
+                game_clone.make_move(turn, random_move)
+
+            # switch turn and update outcome
+            turn = RED if turn == BLUE else BLUE
+            outcome = game_clone.outcome(turn)
+
+        return outcome
+
+    def update_backwards(self, node: Node, outcome):
+        # update
+        node.visits += 1
+        if outcome == node.state.switch_player(node.turn):
+            node.Q += 1
+
+        # propagate
+        if node.parent:
+            self.update_backwards(node.parent, outcome)
 
     def select_child_PUCT(self, c, node: Node):
 
@@ -92,7 +151,7 @@ class MCTSAgent:
 
         best_child = None
         best_UCT = 0
-        for child in node.children:
+        for child in node.childs:
             current_uct = calculate_UCT(node, child, c)
             if current_uct > best_UCT:
                 best_UCT = current_uct
@@ -213,7 +272,7 @@ def timer():
     while progress["thread_running"]:
         elapsed_time = int(time.time() - start_time)
         print(
-            f"\rtraining...{elapsed_time} | Progress: {progress['progress']}",
+            f"\rtraining...{elapsed_time} | Moves made: {progress['progress']}",
             end="",
             flush=True,
         )
@@ -221,5 +280,4 @@ def timer():
 
 
 if __name__ == "__main__":
-    # don't show tensorflow output
     main()

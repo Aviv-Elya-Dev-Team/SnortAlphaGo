@@ -1,7 +1,7 @@
 import pygame
 import sys
 from Board import Board
-from Agent import Agent
+from Agent import Agent, MCTSAgent
 from Network import Network
 import numpy as np, numpy
 from sys import argv
@@ -25,6 +25,7 @@ class SnortGameVisualizer:
     PVP = 0
     CPU_VS_CPU = 1
     PLAYER_VS_CPU = 2
+
     def __init__(self, board, player_type, model_type_cpu1=0, model_type_cpu2=0):
         self.board: Board = board
         pygame.init()
@@ -37,14 +38,20 @@ class SnortGameVisualizer:
         self.font = pygame.font.SysFont(None, 36)
 
         self.winner = -1
-        
+
         self.player_type = player_type
-        
+
         self.agents = {Board.RED: None, Board.BLUE: None}
-        
-        if (self.player_type == self.PLAYER_VS_CPU):
-            self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
+
+        if self.player_type == self.PLAYER_VS_CPU:
             self.agents[Board.BLUE] = "Player"
+
+            # Agent
+            # self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
+
+            # MCTS Agent
+            self.agents[Board.RED] = MCTSAgent(self.board, self.turn)
+
         elif self.player_type == self.CPU_VS_CPU:
             self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
             self.agents[Board.BLUE] = Agent(Network(model_type_cpu2), model_type_cpu2)
@@ -106,21 +113,23 @@ class SnortGameVisualizer:
     def run(self):
         running = True
         while running:
-            if (self.player_type == self.PVP):
+            if self.player_type == self.PVP:
                 running = self.handle_events()
             elif self.player_type == self.PLAYER_VS_CPU:
                 if self.turn == Board.BLUE:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[Board.RED].best_move_to_do(self.board, self.turn)
+                        move = self.agents[Board.RED].best_move_to_do(
+                            self.board, self.turn
+                        )
                         self.handle_click(move, True)
-                    
+
             elif self.player_type == self.CPU_VS_CPU:
                 if self.winner == -1:
                     move = self.agents[self.turn].best_move_to_do(self.board, self.turn)
                     self.handle_click(move, True)
-                    
+
             self.draw_board()
             self.draw_legal_moves(self.turn)
             if self.winner != -1:
@@ -154,9 +163,9 @@ class SnortGameVisualizer:
         self.screen.blit(text_surface, text_rect)
 
     def handle_click(self, pos, is_CPU=False):
-        if (is_CPU):
-            row = pos[0]
+        if is_CPU:
             col = pos[1]
+            row = pos[0]
         else:
             col = pos[0] // CELL_SIZE
             row = pos[1] // CELL_SIZE
@@ -200,12 +209,14 @@ class SnortGameVisualizer:
 def main():
     # create a board (example board, use real board later)
     board = Board()
-    if len(argv)==2:
+    if len(argv) == 2:
         visualizer = SnortGameVisualizer(board, int(argv[1]))
-    if len(argv)==3:
+    if len(argv) == 3:
         visualizer = SnortGameVisualizer(board, int(argv[1]), int(argv[2]))
-    if len(argv)==4:
-        visualizer = SnortGameVisualizer(board, int(argv[1]), int(argv[2]), int(argv[3]))
+    if len(argv) == 4:
+        visualizer = SnortGameVisualizer(
+            board, int(argv[1]), int(argv[2]), int(argv[3])
+        )
     visualizer.run()
 
 
