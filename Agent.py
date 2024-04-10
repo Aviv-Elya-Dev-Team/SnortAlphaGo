@@ -21,7 +21,7 @@ class MCTSAgent:
     def best_move_to_do(self, game, turn, num_iterations=1000):
         self.game = game
         self.turn = turn
-        root = Node(self.game, self.turn)
+        root = Node(copy.deepcopy(self.game), self.turn)
 
         C = 0.8
 
@@ -30,7 +30,7 @@ class MCTSAgent:
             node = self.select(root, self.select_child_UCT, C)
 
             # expansion
-            if node.state.outcome(node.state.switch_player(self.turn)) == Board.ONGOING:
+            if node.state.outcome(self.turn) == Board.ONGOING:
                 new_node = self.expand(node)
             else:
                 new_node = node
@@ -71,11 +71,12 @@ class MCTSAgent:
         node.unexpolred_moves[new_move] = False
 
         # create game clone
-        node.state.make_move(node.state.switch_player(node.turn), new_move)
+        self.turn = node.state.switch_player(node.turn)
         game_clone = copy.deepcopy(node.state)
+        game_clone.make_move(self.turn, new_move)
 
         # create child and add to parent (node)
-        new_node = Node(game_clone, node.turn)
+        new_node = Node(game_clone, self.turn)
         new_node.parent = node
         node.childs.append(new_node)
         return new_node
