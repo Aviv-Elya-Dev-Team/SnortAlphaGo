@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.special import softmax
-from Board import Board, EMPTY, BLACK, RED, BLUE
+from Snort import Snort
 from typing import List
 import copy
 
@@ -8,20 +8,17 @@ ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
 
 class Node:
-    def __init__(self, state: Board, turn) -> None:
-        self.state = state
+    def __init__(self, game: Snort) -> None:
+        self.game = game
         self.Q = 0
         self.P = []
         self.parent = None
         self.childs: List[Node] = []
         self.visits = 0
-        self.turn = turn
-        self.unexpolred_moves = (
-            state.red_legal_moves if turn == RED else state.blue_legal_moves
-        )
+        self.unexpolred_moves = self.game._get_legal_moves(self.game.current_player)
 
     def calculate_P(self):
-        result = np.zeros((10, 10))
+        result = np.zeros((self.game.board_size, self.game.board_size))
         all_visits = sum([child.visits for child in self.childs])
         for p, child in zip(self.P, self.childs):
             loc = p[0]
@@ -29,7 +26,7 @@ class Node:
         flattened = result.flatten()
         return (
             np.concatenate([np.zeros_like(flattened), flattened])
-            if self.turn == BLUE
+            if self.game.current_player == Snort.BLUE
             else np.concatenate([flattened, np.zeros_like(flattened)])
         )
 
@@ -38,26 +35,23 @@ class Node:
         legal_mat = self.unexpolred_moves
         legal_indices = np.argwhere(legal_mat == True)
         random_index = np.random.choice(len(np.argwhere(legal_mat == True)))
-        x, y = legal_indices[random_index]
-        self.unexpolred_moves[x, y] = False
+        row, column = legal_indices[random_index]
+        self.unexpolred_moves[row, column] = False
 
         # insert to self.childs
-        self.turn = self.state.switch_player(self.turn)
-        self.state.make_move(self.turn, (x, y))
-        child = Node(copy.deepcopy(self.state), self.turn)
+        self.game.make_move((row, column))
+        child = Node(copy.deepcopy(self.game), self.game.current_player)
         child.parent = self
         self.childs.append(child)
-        self.state.unmake_last_move()
-
-        self.turn = self.state.switch_player(self.turn)
+        self.game.unmake_last_move()
 
         red_moves_p, blue_moves_p, Q = self.decode_state(
             model.predict(self.encode_state(encode_type))
         )
         P = np.concatenate((red_moves_p.flatten(), blue_moves_p.flatten()))
         self.Q = Q[0]
-        moves_p = red_moves_p if self.turn == RED else blue_moves_p
-        self.P.append([(x, y), moves_p[x, y]])
+        moves_p = red_moves_p if self.game.current_player == Snort.RED else blue_moves_p
+        self.P.append([(row, column), moves_p[row, column]])
 
         return child
 
@@ -65,34 +59,34 @@ class Node:
         if encode_type == ENCODE_LEGAL:
             return np.concatenate(
                 (
-                    self.state.red_legal_moves.flatten().astype(int),
-                    self.state.blue_legal_moves.flatten().astype(int),
-                    [1, 0] if self.turn == self.state.RED else [0, 1],
+                    self.game.red_legal_moves.flatten().astype(int),
+                    self.game.blue_legal_moves.flatten().astype(int),
+                    [1, 0] if self.game.current_player == Snort.RED else [0, 1],
                 )
             ).reshape(-1, 202)
         if encode_type == ENCODE_BOARD:
-            grid = self.state.board
+            grid = self.game.board
             red_board, blue_board, black_board = (
                 np.copy(grid),
                 np.copy(grid),
                 np.copy(grid),
             )
             (
-                red_board[grid == self.state.RED],
-                blue_board[grid == self.state.BLUE],
-                black_board[grid == self.state.BLACK],
+                red_board[grid == Snort.RED],
+                blue_board[grid == Snort.BLUE],
+                black_board[grid == Snort.BLACK],
             ) = (1, 1, 1)
             (
-                red_board[grid != self.state.RED],
-                blue_board[grid != self.state.BLUE],
-                black_board[grid != self.state.BLACK],
+                red_board[grid != Snort.RED],
+                blue_board[grid != Snort.BLUE],
+                black_board[grid != Snort.BLACK],
             ) = (0, 0, 0)
             return np.concatenate(
                 (
                     red_board.flatten(),
                     black_board.flatten(),
                     black_board.flatten(),
-                    [1, 0] if self.turn == RED else [0, 1],
+                    [1, 0] if self.game.current_player == Snort.RED else [0, 1],
                 )
             ).reshape(-1, 302)
         if encode_type == ENCODE_BOTH:
@@ -107,19 +101,29 @@ class Node:
     def decode_state(self, vector):
         P, Q = vector[0][0], vector[1][0]
         P, Q = np.array(P), np.array(Q)
-        red_moves, blue_moves = P[:100].reshape(10, 10), P[100:].reshape(10, 10)
-        red_moves, blue_moves = softmax(red_moves.flatten()).reshape(10, 10), softmax(
-            red_moves.flatten()
-        ).reshape(10, 10)
+        red_moves, blue_moves = (
+            P[:100].reshape(self.game.board_size, self.game.board_size),
+            P[100:].reshape(self.game.board_size, self.game.board_size),
+        )
+
+        red_moves, blue_moves = (
+            softmax(red_moves.flatten()).reshape(
+                self.game.board_size, self.game.board_size
+            ),
+            softmax(red_moves.flatten()).reshape(
+                self.game.board_size, self.game.board_size
+            ),
+        )
+
         (
-            red_moves[self.state.red_legal_moves == False],
-            blue_moves[self.state.blue_legal_moves == False],
+            red_moves[self.game.red_legal_moves == False],
+            blue_moves[self.game.blue_legal_moves == False],
         ) = (0, 0)
         return red_moves, blue_moves, Q
 
     def init_P_childs(self, moves_p):
         for child in self.childs:
-            x, y = moves_p[np.argwhere(self.state.board != child.state.board)][0]
+            x, y = moves_p[np.argwhere(self.game.board != child.game.board)][0]
             self.P.append(moves_p[x, y])
 
     def select_best_child(self) -> "Node":
@@ -128,7 +132,7 @@ class Node:
         return self.childs[
             (
                 np.argmax([p * c.Q for p, c in zip(self.P, self.childs)])
-                if self.turn == self.state.RED
+                if self.game.current_player == Snort.RED
                 else np.argmin([p * c.Q for p, c in zip(self.P, self.childs)])
             )
         ]

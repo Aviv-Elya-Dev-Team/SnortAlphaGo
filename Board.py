@@ -40,7 +40,7 @@ class Board:
                 i += 1
         self.moves = []
 
-    def legal_move(self, player, position):
+    def is_legal_move(self, player, position):
         x, y = position
         if (
             x not in range(10)
@@ -56,7 +56,7 @@ class Board:
 
     def make_move(self, player, position):
         x, y = position
-        if self.legal_move(player, position):
+        if self.is_legal_move(player, position):
             self.board[x, y] = player
             self.moves.append([player, position])
             self.red_legal_moves[x, y] = False

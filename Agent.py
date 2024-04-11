@@ -14,13 +14,10 @@ progress = {"progress": 0, "thread_running": True}
 
 
 class MCTSAgent:
-    def __init__(self, game: Board, turn=RED) -> None:
+    def __init__(self, game: Board) -> None:
         self.game = game
-        self.turn = turn
 
-    def best_move_to_do(self, game, turn, num_iterations=1000):
-        self.game = game
-        self.turn = turn
+    def best_move_to_do(self, num_iterations=1000):
         root = Node(copy.deepcopy(self.game), self.turn)
 
         C = 0.8
@@ -30,7 +27,7 @@ class MCTSAgent:
             node = self.select(root, self.select_child_UCT, C)
 
             # expansion
-            if node.state.outcome(self.turn) == Board.ONGOING:
+            if node.game.outcome() == Board.ONGOING:
                 new_node = self.expand(node)
             else:
                 new_node = node
@@ -44,7 +41,7 @@ class MCTSAgent:
             root.childs, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
         )
 
-        return best_child.state.moves[-1][1]
+        return best_child.game.moves[-1][1]
 
     def select(self, root: Node, method, *args):
         result_node = root
@@ -52,8 +49,8 @@ class MCTSAgent:
         # (explored all moves = dunzo)
         while (
             len(np.argwhere(result_node.unexpolred_moves == True)) == 0
-            and result_node.state.outcome(
-                result_node.state.switch_player(result_node.turn)
+            and result_node.game.outcome(
+                result_node.game.switch_player(result_node.turn)
             )
             == Board.ONGOING
         ):
@@ -71,8 +68,8 @@ class MCTSAgent:
         node.unexpolred_moves[new_move] = False
 
         # create game clone
-        self.turn = node.state.switch_player(node.turn)
-        game_clone = copy.deepcopy(node.state)
+        self.turn = node.game.switch_player(node.turn)
+        game_clone = copy.deepcopy(node.game)
         game_clone.make_move(self.turn, new_move)
 
         # create child and add to parent (node)
@@ -92,7 +89,7 @@ class MCTSAgent:
     # i looked forwared in time, i saw 14,000,605 futures.
     def simulate(self, node: Node):
         # simulate making random moves until the game concludes
-        game_clone = copy.deepcopy(node.state)
+        game_clone = copy.deepcopy(node.game)
         turn = node.turn
         outcome = game_clone.outcome(turn)
         while outcome == Board.ONGOING:
@@ -119,7 +116,7 @@ class MCTSAgent:
     def update_backwards(self, node: Node, outcome):
         # update
         node.visits += 1
-        if outcome == node.state.switch_player(node.turn):
+        if outcome == node.game.switch_player(node.turn):
             node.Q += 1
 
         # propagate

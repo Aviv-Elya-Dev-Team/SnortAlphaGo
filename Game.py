@@ -1,6 +1,6 @@
 import pygame
 import sys
-from Board import Board
+from Snort import Snort
 from Agent import Agent, MCTSAgent
 from Network import Network
 import numpy as np, numpy
@@ -20,20 +20,21 @@ SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
 CELL_SIZE = 60
 
+STARTING_PLAYER = Snort.BLUE
+SECOND_PLAYER = Snort.other_player(STARTING_PLAYER)
+
 
 class SnortGameVisualizer:
     PVP = 0
     CPU_VS_CPU = 1
     PLAYER_VS_CPU = 2
 
-    def __init__(self, board, player_type, model_type_cpu1=0, model_type_cpu2=0):
-        self.board: Board = board
+    def __init__(self, game, player_type, model_type_cpu1=0, model_type_cpu2=0):
+        self.game: Snort = game
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Snort Game")
         self.clock = pygame.time.Clock()
-
-        self.turn = Board.RED
 
         self.font = pygame.font.SysFont(None, 36)
 
@@ -41,34 +42,38 @@ class SnortGameVisualizer:
 
         self.player_type = player_type
 
-        self.agents = {Board.RED: None, Board.BLUE: None}
+        self.agents = {STARTING_PLAYER: None, Snort.other_player(STARTING_PLAYER): None}
 
         if self.player_type == self.PLAYER_VS_CPU:
-            self.agents[Board.BLUE] = "Player"
+            self.agents[STARTING_PLAYER] = "Player"
 
             # Agent
             # self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
 
             # MCTS Agent
-            self.agents[Board.RED] = MCTSAgent(self.board, self.turn)
+            self.agents[SECOND_PLAYER] = MCTSAgent(self.game, self.game.current_player)
 
         elif self.player_type == self.CPU_VS_CPU:
-            self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
-            self.agents[Board.BLUE] = Agent(Network(model_type_cpu2), model_type_cpu2)
+            self.agents[STARTING_PLAYER] = Agent(
+                Network(model_type_cpu1), model_type_cpu1
+            )
+            self.agents[SECOND_PLAYER] = Agent(
+                Network(model_type_cpu2), model_type_cpu2
+            )
 
     def draw_board(self):
         self.screen.fill(WHITE)
-        rows = self.board.board.shape[0]
-        cols = self.board.board.shape[1]
+        rows = self.game.board.shape[0]
+        cols = self.game.board.shape[1]
         for row in range(rows):
             for col in range(cols):
-                piece = self.board.board[row, col]
+                piece = self.game.board[row, col]
 
-                if piece == Board.RED:
+                if piece == Snort.RED:
                     color = RED
-                elif piece == Board.BLUE:
+                elif piece == Snort.BLUE:
                     color = BLUE
-                elif piece == Board.BLACK:
+                elif piece == Snort.BLACK:
                     color = BLACK
                 else:
                     color = WHITE
@@ -89,16 +94,12 @@ class SnortGameVisualizer:
                     1,
                 )
 
-    def draw_legal_moves(self, player):
-        legal_move_list = []
-        if player == Board.RED:
-            legal_move_list = self.board.red_legal_moves
-        else:
-            legal_move_list = self.board.blue_legal_moves
+    def draw_legal_moves(self):
+        legal_move_list = self.game._get_legal_moves(self.game.current_player)
 
         rows, cols = numpy.where(legal_move_list == True)
         for row, col in zip(rows, cols):
-            if self.board.board[row, col] == Board.EMPTY:
+            if self.game.board[row, col] == Snort.EMPTY:
 
                 pygame.draw.circle(
                     self.screen,
@@ -116,24 +117,26 @@ class SnortGameVisualizer:
             if self.player_type == self.PVP:
                 running = self.handle_events()
             elif self.player_type == self.PLAYER_VS_CPU:
-                if self.turn == Board.BLUE:
+                if self.game.current_player == STARTING_PLAYER:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[Board.RED].best_move_to_do(
-                            self.board, self.turn
+                        move = self.agents[SECOND_PLAYER].best_move_to_do(
+                            self.game, self.game.current_player
                         )
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
                 if self.winner == -1:
-                    move = self.agents[self.turn].best_move_to_do(self.board, self.turn)
+                    move = self.agents[self.game.current_player].best_move_to_do(
+                        self.game, self.game.current_player
+                    )
                     self.handle_click(move, True)
 
             self.draw_board()
-            self.draw_legal_moves(self.turn)
+            self.draw_legal_moves()
             if self.winner != -1:
-                if self.winner == Board.RED:
+                if self.winner == Snort.RED:
                     color = RED
                     winner = "red"
                 else:
@@ -170,16 +173,14 @@ class SnortGameVisualizer:
             col = pos[0] // CELL_SIZE
             row = pos[1] // CELL_SIZE
 
-        if self.board.legal_move(self.turn, (row, col)):
+        if self.game.is_legal_move((row, col)):
             # make move
-            self.board.make_move(self.turn, (row, col))
+            self.game.make_move((row, col))
 
             # check for winner
-            if self.board.end(self.turn):
-                self.winner = self.turn
-
-            # update turn
-            self.turn = self.board.switch_player(self.turn)
+            outcome = self.game.outcome()
+            if self.game.outcome() != Snort.ONGOING:
+                self.winner = outcome
 
         else:
             # display error message for 1 second then continue
@@ -198,8 +199,7 @@ class SnortGameVisualizer:
                 return False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_BACKSPACE:  # backspace for a hacky unmake move
-                    self.board.unmake_last_move()
-                    self.turn = self.board.switch_player(self.turn)
+                    self.game.unmake_last_move()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pygame.mouse.get_pressed()[0]:  # left mouse button
                     self.handle_click(pygame.mouse.get_pos())
@@ -208,15 +208,13 @@ class SnortGameVisualizer:
 
 def main():
     # create a board (example board, use real board later)
-    board = Board()
+    game = Snort(STARTING_PLAYER)
     if len(argv) == 2:
-        visualizer = SnortGameVisualizer(board, int(argv[1]))
+        visualizer = SnortGameVisualizer(game, int(argv[1]))
     if len(argv) == 3:
-        visualizer = SnortGameVisualizer(board, int(argv[1]), int(argv[2]))
+        visualizer = SnortGameVisualizer(game, int(argv[1]), int(argv[2]))
     if len(argv) == 4:
-        visualizer = SnortGameVisualizer(
-            board, int(argv[1]), int(argv[2]), int(argv[3])
-        )
+        visualizer = SnortGameVisualizer(game, int(argv[1]), int(argv[2]), int(argv[3]))
     visualizer.run()
 
 

@@ -72,17 +72,10 @@ class Snort:
 
         return neighbors
 
-    # returns the player opposite of the one given as a parameter
-    def other_player(self, player):
-        if player == self.RED:
-            return self.BLUE
-        else:
-            return self.RED
-
     # switches the player from RED to BLUE or
     # from BLUE to RED depends on who's playing right now
     def _switch_player(self):
-        self.current_player = self.other_player(self.current_player)
+        self.current_player = Snort.other_player(self.current_player)
 
     # makes the move on the board and
     # returns True if the move was made
@@ -102,7 +95,7 @@ class Snort:
         neighbors = self._get_cell_neighbors(move)
 
         # get the correct legal moves array
-        legal_moves = self._get_legal_moves(self.other_player(self.current_player))
+        legal_moves = self._get_legal_moves(Snort.other_player(self.current_player))
 
         # update legal moves
         legal_moves[move] = False
@@ -151,3 +144,11 @@ class Snort:
 
         legal_moves = self._get_legal_moves(self.current_player)
         return legal_moves[move]
+
+    # returns the player opposite of the one given as a parameter
+    @staticmethod
+    def other_player(player):
+        if player == Snort.RED:
+            return Snort.BLUE
+        else:
+            return Snort.RED
