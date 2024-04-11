@@ -8,14 +8,14 @@ ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
 
 class Node:
-    def __init__(self, game: Snort) -> None:
+    def __init__(self, game: Snort, parent: "Node" = None) -> None:
         self.game = game
         self.Q = 0
         self.P = []
-        self.parent = None
+        self.parent = parent
         self.childs: List[Node] = []
         self.visits = 0
-        self.unexpolred_moves = self.game._get_legal_moves(self.game.current_player)
+        self.unexplored_moves = self.game._get_legal_moves(self.game.current_player)
 
     def calculate_P(self):
         result = np.zeros((self.game.board_size, self.game.board_size))
@@ -32,16 +32,15 @@ class Node:
 
     def add_random_child(self, encode_type, model):
         # add child
-        legal_mat = self.unexpolred_moves
+        legal_mat = self.unexplored_moves
         legal_indices = np.argwhere(legal_mat == True)
         random_index = np.random.choice(len(np.argwhere(legal_mat == True)))
         row, column = legal_indices[random_index]
-        self.unexpolred_moves[row, column] = False
+        self.unexplored_moves[row, column] = False
 
         # insert to self.childs
         self.game.make_move((row, column))
-        child = Node(copy.deepcopy(self.game), self.game.current_player)
-        child.parent = self
+        child = Node(copy.deepcopy(self.game), self)
         self.childs.append(child)
         self.game.unmake_last_move()
 
@@ -155,7 +154,7 @@ class Node:
         return best_child
 
     def is_leaf(self):
-        return np.any(self.unexpolred_moves == True)
+        return np.any(self.unexplored_moves == True)
 
 
 def back_propagation(node: Node, value):

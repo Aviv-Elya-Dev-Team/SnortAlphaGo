@@ -6,6 +6,7 @@ class Snort:
 
     def __init__(self, starting_player, board_size=10, num_black_squares=3) -> None:
         self.board_size = board_size
+        self.num_black_squares = num_black_squares
 
         self.current_player = starting_player
         self.board = numpy.zeros((board_size, board_size))
@@ -95,19 +96,25 @@ class Snort:
         neighbors = self._get_cell_neighbors(move)
 
         # get the correct legal moves array
-        legal_moves = self._get_legal_moves(Snort.other_player(self.current_player))
+        current_player_legal_moves = self._get_legal_moves(self.current_player)
+        other_player_legal_moves = self._get_legal_moves(
+            Snort.other_player(self.current_player)
+        )
 
         # update legal moves
-        legal_moves[move] = False
+        current_player_legal_moves[move] = False
+        other_player_legal_moves[move] = False
         for neighbor in neighbors:
-            legal_moves[neighbor] = False
+            other_player_legal_moves[neighbor] = False
 
     # clones this game and returns the new object
-    def copy(self):
-        result = Snort(self.board_size)
-        result.current_player = self.current_player
-        # self.board =
-        pass
+    def clone(self):
+        result = Snort(self.current_player, self.board_size, self.num_black_squares)
+        result.red_legal_moves = numpy.copy(self.red_legal_moves)
+        result.blue_legal_moves = numpy.copy(self.blue_legal_moves)
+        result.board = numpy.copy(self.board)
+        result.move_history = [move for move in self.move_history]
+        return result
 
     # returns either RED, BLUE or ONGOING to tell either
     # who won or if the game is still ongoing

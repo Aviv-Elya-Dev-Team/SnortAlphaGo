@@ -1,4 +1,4 @@
-from Board import Board, EMPTY, BLACK, RED, BLUE
+from Snort import Snort
 from Node import Node, back_propagation, ENCODE_BOTH, ENCODE_LEGAL, ENCODE_BOARD
 from Network import Network
 import numpy as np, numpy
@@ -14,11 +14,12 @@ progress = {"progress": 0, "thread_running": True}
 
 
 class MCTSAgent:
-    def __init__(self, game: Board) -> None:
+    def __init__(self, game: Snort, starting_player) -> None:
         self.game = game
+        self.starting_player = starting_player
 
     def best_move_to_do(self, num_iterations=1000):
-        root = Node(copy.deepcopy(self.game), self.turn)
+        root = Node(copy.deepcopy(self.game))
 
         C = 0.8
 
@@ -27,7 +28,7 @@ class MCTSAgent:
             node = self.select(root, self.select_child_UCT, C)
 
             # expansion
-            if node.game.outcome() == Board.ONGOING:
+            if node.game.outcome() == Snort.ONGOING:
                 new_node = self.expand(node)
             else:
                 new_node = node
@@ -48,11 +49,8 @@ class MCTSAgent:
         # while the nodes on the way are already dunzo, but the position is ongoing
         # (explored all moves = dunzo)
         while (
-            len(np.argwhere(result_node.unexpolred_moves == True)) == 0
-            and result_node.game.outcome(
-                result_node.game.switch_player(result_node.turn)
-            )
-            == Board.ONGOING
+            len(np.argwhere(result_node.unexplored_moves == True)) == 0
+            and result_node.game.outcome() == Snort.ONGOING
         ):
             node = method(*args, node=result_node)
             if node == None:
@@ -65,21 +63,19 @@ class MCTSAgent:
     def expand(self, node: Node):
         # set unexplored
         new_move = self._get_next_unexplored_move(node)
-        node.unexpolred_moves[new_move] = False
+        node.unexplored_moves[new_move] = False
 
         # create game clone
-        self.turn = node.game.switch_player(node.turn)
-        game_clone = copy.deepcopy(node.game)
-        game_clone.make_move(self.turn, new_move)
+        game_clone = node.game.clone()
+        game_clone.make_move(new_move)
 
         # create child and add to parent (node)
-        new_node = Node(game_clone, self.turn)
-        new_node.parent = node
+        new_node = Node(game_clone, node)
         node.childs.append(new_node)
         return new_node
 
     def _get_next_unexplored_move(self, node: Node):
-        legal_mat = node.unexpolred_moves
+        legal_mat = node.unexplored_moves
         legal_indices = np.argwhere(legal_mat == True)
         indices = len(np.argwhere(legal_mat == True))
         random_index = np.random.choice(indices)
@@ -90,12 +86,11 @@ class MCTSAgent:
     def simulate(self, node: Node):
         # simulate making random moves until the game concludes
         game_clone = copy.deepcopy(node.game)
-        turn = node.turn
         outcome = game_clone.outcome(turn)
-        while outcome == Board.ONGOING:
+        while outcome == Snort.ONGOING:
             moves = (
                 game_clone.red_legal_moves
-                if turn == RED
+                if turn == Snort.RED
                 else game_clone.blue_legal_moves
             )
 
@@ -108,7 +103,7 @@ class MCTSAgent:
                 game_clone.make_move(turn, random_move)
 
             # switch turn and update outcome
-            turn = RED if turn == BLUE else BLUE
+            turn = Snort.RED if turn == Snort.BLUE else Snort.BLUE
             outcome = game_clone.outcome(turn)
 
         return outcome
@@ -160,11 +155,15 @@ class MCTSAgent:
 
 class Agent:
     def __init__(
-        self, model: Network = Network(ENCODE_LEGAL), encode_type=ENCODE_LEGAL
+        self,
+        starting_player,
+        model: Network = Network(ENCODE_LEGAL),
+        encode_type=ENCODE_LEGAL,
     ) -> None:
+
         self.model = model
         self.encode_type = encode_type
-
+        self.starting_player = starting_player
         self.init_model()
 
     def init_model(self):
@@ -184,9 +183,9 @@ class Agent:
             self.model.load_model(f"models/model{self.encode_type}.keras")
             self.model.compile_model()
 
-    def best_move(self, turn, state: Board, num_iterations, last_epoch, num_epochs):
-        firstBorad = np.copy(state.board)
-        root: Node = Node(state, turn)
+    def best_move(self, turn, game: Snort, num_iterations, last_epoch, num_epochs):
+        firstBorad = np.copy(game.board)
+        root: Node = Node(game)
         node = root
 
         C = 0.8
@@ -196,13 +195,13 @@ class Agent:
                 node = root.select_child_PUCT(C)
                 if not node:
                     return
-                if not np.array_equal(firstBorad, state.board):
+                if not np.array_equal(firstBorad, game.board):
                     print("but why??")
             new_node = node.add_random_child(self.encode_type, self.model)
 
             back_propagation(new_node, new_node.Q)
 
-            real_Q = np.array([state.reward()]).reshape(1, 1)
+            real_Q = np.array([game.reward()]).reshape(1, 1)
             train_P = node.calculate_P()
             self.model.train(
                 node.encode_state(self.encode_type),
@@ -213,25 +212,27 @@ class Agent:
             last_epoch += num_epochs
             node = root
 
-    def best_move_to_do(self, state: Board, turn):
-        node = Node(state, turn)
+    def best_move_to_do(self, game: Snort, turn):
+        # TODO: add parent here maybe
+        node = Node(game)
         red_moves_p, blue_moves_p, Q = node.decode_state(
             self.model.predict(node.encode_state(self.encode_type))
         )
-        red_moves_p, blue_moves_p = red_moves_p.reshape((10, 10)), blue_moves_p.reshape(
-            (10, 10)
-        )
+        red_moves_p, blue_moves_p = red_moves_p.reshape(
+            (game.board_size, game.board_size)
+        ), blue_moves_p.reshape((game.board_size, game.board_size))
         return (
             np.unravel_index(np.argmax(red_moves_p), red_moves_p.shape)
-            if turn == state.RED
+            if turn == Snort.RED
             else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
         )
 
+    # TODO: remove this function from the Agent class (WTF)
     def train(self, log_progress={}, num_iterations=1000, num_epochs=10):
         last_epoch = 1
-        game = Board()
-        turn = np.random.choice([game.RED, game.BLUE])
-        while not game.end(turn):
+        game = Snort(self.starting_player)
+        turn = np.random.choice([Snort.RED, Snort.BLUE])
+        while game.outcome() == Snort.ONGOING:
             self.best_move(
                 turn, copy.deepcopy(game), num_iterations, last_epoch, num_epochs
             )
