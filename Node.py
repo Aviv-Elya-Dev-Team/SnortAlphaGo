@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np, numpy
 from scipy.special import softmax
 from Snort import Snort
 from typing import List
@@ -15,7 +15,9 @@ class Node:
         self.parent = parent
         self.childs: List[Node] = []
         self.visits = 0
-        self.unexplored_moves = self.game._get_legal_moves(self.game.current_player)
+        self.unexplored_moves = numpy.copy(
+            self.game.get_legal_moves(self.game.current_player)
+        )
 
     def calculate_P(self):
         result = np.zeros((self.game.board_size, self.game.board_size))

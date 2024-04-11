@@ -42,7 +42,7 @@ class MCTSAgent:
             root.childs, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
         )
 
-        return best_child.game.moves[-1][1]
+        return best_child.game.move_history[-1]
 
     def select(self, root: Node, method, *args):
         result_node = root
@@ -85,33 +85,25 @@ class MCTSAgent:
     # i looked forwared in time, i saw 14,000,605 futures.
     def simulate(self, node: Node):
         # simulate making random moves until the game concludes
-        game_clone = copy.deepcopy(node.game)
-        outcome = game_clone.outcome(turn)
+        game_clone = node.game.clone()
+        outcome = game_clone.outcome()
         while outcome == Snort.ONGOING:
-            moves = (
-                game_clone.red_legal_moves
-                if turn == Snort.RED
-                else game_clone.blue_legal_moves
-            )
+            moves = game_clone.get_legal_moves(game_clone.current_player)
 
             # make a random move
             true_indices = np.transpose(np.where(moves == True))
-            if len(true_indices) != 0:
-                random_move = tuple(
-                    true_indices[np.random.randint(0, len(true_indices))]
-                )
-                game_clone.make_move(turn, random_move)
 
-            # switch turn and update outcome
-            turn = Snort.RED if turn == Snort.BLUE else Snort.BLUE
-            outcome = game_clone.outcome(turn)
+            random_move = tuple(true_indices[np.random.randint(0, len(true_indices))])
+            game_clone.make_move(random_move)
+
+            outcome = game_clone.outcome()
 
         return outcome
 
     def update_backwards(self, node: Node, outcome):
         # update
         node.visits += 1
-        if outcome == node.game.switch_player(node.turn):
+        if outcome == node.game.other_player(self.game.current_player):
             node.Q += 1
 
         # propagate

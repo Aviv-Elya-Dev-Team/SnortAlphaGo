@@ -56,7 +56,7 @@ class Snort:
         row, column = cell
         neighbors = []
         # up
-        if row - 1 > 0:
+        if row - 1 >= 0:
             neighbors.append((row - 1, column))
 
         # down
@@ -64,7 +64,7 @@ class Snort:
             neighbors.append((row + 1, column))
 
         # left
-        if column - 1 > 0:
+        if column - 1 >= 0:
             neighbors.append((row, column - 1))
 
         # right
@@ -96,8 +96,8 @@ class Snort:
         neighbors = self._get_cell_neighbors(move)
 
         # get the correct legal moves array
-        current_player_legal_moves = self._get_legal_moves(self.current_player)
-        other_player_legal_moves = self._get_legal_moves(
+        current_player_legal_moves = self.get_legal_moves(self.current_player)
+        other_player_legal_moves = self.get_legal_moves(
             Snort.other_player(self.current_player)
         )
 
@@ -134,7 +134,7 @@ class Snort:
         return self.move_history[-1]
 
     # returns a list of available moves for the current player
-    def _get_legal_moves(self, player):
+    def get_legal_moves(self, player):
         return self.red_legal_moves if player == self.RED else self.blue_legal_moves
 
     # checks if the given move is a move the current player can play
@@ -149,7 +149,7 @@ class Snort:
         ):
             return False
 
-        legal_moves = self._get_legal_moves(self.current_player)
+        legal_moves = self.get_legal_moves(self.current_player)
         return legal_moves[move]
 
     # returns the player opposite of the one given as a parameter

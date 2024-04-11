@@ -20,7 +20,7 @@ SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
 CELL_SIZE = 60
 
-STARTING_PLAYER = Snort.BLUE
+STARTING_PLAYER = Snort.RED
 SECOND_PLAYER = Snort.other_player(STARTING_PLAYER)
 
 
@@ -95,7 +95,7 @@ class SnortGameVisualizer:
                 )
 
     def draw_legal_moves(self):
-        legal_move_list = self.game._get_legal_moves(self.game.current_player)
+        legal_move_list = self.game.get_legal_moves(self.game.current_player)
 
         rows, cols = numpy.where(legal_move_list == True)
         for row, col in zip(rows, cols):
@@ -121,16 +121,12 @@ class SnortGameVisualizer:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[SECOND_PLAYER].best_move_to_do(
-                            self.game, self.game.current_player
-                        )
+                        move = self.agents[SECOND_PLAYER].best_move_to_do()
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
                 if self.winner == -1:
-                    move = self.agents[self.game.current_player].best_move_to_do(
-                        self.game, self.game.current_player
-                    )
+                    move = self.agents[self.game.current_player].best_move_to_do()
                     self.handle_click(move, True)
 
             self.draw_board()
