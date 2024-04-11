@@ -13,7 +13,7 @@ class Node:
         self.Q = 0
         self.P = []
         self.parent = parent
-        self.childs: List[Node] = []
+        self.children: List[Node] = []
         self.visits = 0
         self.unexplored_moves = numpy.copy(
             self.game.get_legal_moves(self.game.current_player)
@@ -21,8 +21,8 @@ class Node:
 
     def calculate_P(self):
         result = np.zeros((self.game.board_size, self.game.board_size))
-        all_visits = sum([child.visits for child in self.childs])
-        for p, child in zip(self.P, self.childs):
+        all_visits = sum([child.visits for child in self.children])
+        for p, child in zip(self.P, self.children):
             loc = p[0]
             result[loc] = child.visits / all_visits
         flattened = result.flatten()
@@ -43,7 +43,7 @@ class Node:
         # insert to self.childs
         self.game.make_move((row, column))
         child = Node(copy.deepcopy(self.game), self)
-        self.childs.append(child)
+        self.children.append(child)
         self.game.unmake_last_move()
 
         red_moves_p, blue_moves_p, Q = self.decode_state(
@@ -89,6 +89,7 @@ class Node:
                     black_board.flatten(),
                     [1, 0] if self.game.current_player == Snort.RED else [0, 1],
                 )
+                # TODO: get rid of hard coded values
             ).reshape(-1, 302)
         if encode_type == ENCODE_BOTH:
             return np.concatenate(
@@ -123,35 +124,35 @@ class Node:
         return red_moves, blue_moves, Q
 
     def init_P_childs(self, moves_p):
-        for child in self.childs:
+        for child in self.children:
             x, y = moves_p[np.argwhere(self.game.board != child.game.board)][0]
             self.P.append(moves_p[x, y])
 
     def select_best_child(self) -> "Node":
-        if len(self.childs) == 0 or len(self.P) == 0:
+        if len(self.children) == 0 or len(self.P) == 0:
             return None
-        return self.childs[
+        return self.children[
             (
-                np.argmax([p * c.Q for p, c in zip(self.P, self.childs)])
+                np.argmax([p * c.Q for p, c in zip(self.P, self.children)])
                 if self.game.current_player == Snort.RED
-                else np.argmin([p * c.Q for p, c in zip(self.P, self.childs)])
+                else np.argmin([p * c.Q for p, c in zip(self.P, self.children)])
             )
         ]
 
     def select_child_PUCT(self, c):
 
         def calculate_PUCT(node: "Node", child_index: int, c):
-            return node.childs[child_index].Q + c * node.P[child_index][1] * (
-                np.sqrt(node.visits) / node.childs[child_index].visits
+            return node.children[child_index].Q + c * node.P[child_index][1] * (
+                np.sqrt(node.visits) / node.children[child_index].visits
             )
 
         best_child = None
         best_PUCT = 0
-        for child_index in range(len(self.childs)):
+        for child_index in range(len(self.children)):
             current_puct = calculate_PUCT(self, child_index, c)
             if current_puct > best_PUCT:
                 best_PUCT = current_puct
-                best_child = self.childs[child_index]
+                best_child = self.children[child_index]
 
         return best_child
 
@@ -162,6 +163,6 @@ class Node:
 def back_propagation(node: Node, value):
     # TODO: maybe negative Q is bad
     node.visits += 1
-    node.Q += value
+    node.Q += 1 / (node.visits)
     if node.parent:
         back_propagation(node.parent, value)

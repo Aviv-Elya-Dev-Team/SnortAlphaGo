@@ -49,15 +49,20 @@ class SnortGameVisualizer:
         self.agents = {STARTING_PLAYER: None, Snort.other_player(STARTING_PLAYER): None}
 
         if self.player_type == self.PLAYER_VS_CPU:
-            self.agents[SECOND_PLAYER] = "Player"
+            self.agents[STARTING_PLAYER] = "Player"
 
             # Agent
-            # self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
+            self.agents[SECOND_PLAYER] = Agent(
+                self.game,
+                self.game.current_player,
+                Network(model_type_cpu1),
+                model_type_cpu1,
+            )
 
             # MCTS Agent
-            self.agents[STARTING_PLAYER] = MCTSAgent(
-                self.game, self.game.current_player
-            )
+            # self.agents[STARTING_PLAYER] = MCTSAgent(
+            #     self.game, self.game.current_player
+            # )
 
         elif self.player_type == self.CPU_VS_CPU:
             self.agents[STARTING_PLAYER] = Agent(
@@ -123,16 +128,16 @@ class SnortGameVisualizer:
             if self.player_type == self.PVP:
                 running = self.handle_events()
             elif self.player_type == self.PLAYER_VS_CPU:
-                if self.game.current_player == SECOND_PLAYER:
+                if self.game.current_player == STARTING_PLAYER:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[STARTING_PLAYER].best_move_to_do()
+                        move = self.agents[SECOND_PLAYER].best_move()
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
                 if self.winner == -1:
-                    move = self.agents[self.game.current_player].best_move_to_do()
+                    move = self.agents[self.game.current_player].best_move()
                     self.handle_click(move, True)
 
             self.draw_board()

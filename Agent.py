@@ -18,7 +18,7 @@ class MCTSAgent:
         self.game = game
         self.starting_player = starting_player
 
-    def best_move_to_do(self, num_iterations=30000):
+    def best_move(self, num_iterations=30000):
         root = Node(self.game.clone())
 
         C = 0.8
@@ -32,14 +32,16 @@ class MCTSAgent:
                 new_node = self.expand(node)
             else:
                 new_node = node
+
             # simulation
             outcome = self.simulate(new_node)
+
             # back propagation
             self.update_backwards(new_node, outcome)
 
         # return best child (ratio between wins and visits)
         best_child = max(
-            root.childs, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
+            root.children, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
         )
 
         return best_child.game.move_history[-1]
@@ -71,7 +73,7 @@ class MCTSAgent:
 
         # create child and add to parent (node)
         new_node = Node(game_clone, node)
-        node.childs.append(new_node)
+        node.children.append(new_node)
         return new_node
 
     def _get_next_unexplored_move(self, node: Node):
@@ -114,23 +116,6 @@ class MCTSAgent:
         if node.parent:
             self.update_backwards(node.parent, outcome)
 
-    def select_child_PUCT(self, c, node: Node):
-
-        def calculate_PUCT(parent: "Node", child_index: int, c):
-            return parent.childs[child_index].Q + c * parent.P[child_index][1] * (
-                np.sqrt(parent.visits) / parent.childs[child_index].visits
-            )
-
-        best_child = None
-        best_PUCT = 0
-        for child_index in range(len(node.childs)):
-            current_puct = calculate_PUCT(node, child_index, c)
-            if current_puct > best_PUCT:
-                best_PUCT = current_puct
-                best_child = node.childs[child_index]
-
-        return best_child
-
     def select_child_UCT(self, c, node: Node):
 
         def calculate_UCT(parent: Node, child: Node, c):
@@ -140,7 +125,7 @@ class MCTSAgent:
 
         best_child = None
         best_UCT = 0
-        for child in node.childs:
+        for child in node.children:
             current_uct = calculate_UCT(node, child, c)
             if current_uct > best_UCT:
                 best_UCT = current_uct
@@ -152,6 +137,7 @@ class MCTSAgent:
 class Agent:
     def __init__(
         self,
+        game: Snort,
         starting_player,
         model: Network = Network(ENCODE_LEGAL),
         encode_type=ENCODE_LEGAL,
@@ -160,6 +146,7 @@ class Agent:
         self.model = model
         self.encode_type = encode_type
         self.starting_player = starting_player
+        self.game = game
         self.init_model()
 
     def init_model(self):
@@ -179,34 +166,85 @@ class Agent:
             self.model.load_model(f"models/model{self.encode_type}.keras")
             self.model.compile_model()
 
-    def best_move(self, turn, game: Snort, num_iterations, last_epoch, num_epochs):
-        firstBorad = np.copy(game.board)
-        root: Node = Node(game)
-        node = root
+    def best_move(self, num_iterations=1000, num_epochs=10):
+        root: Node = Node(self.game.clone())
 
         C = 0.8
 
         for _ in range(num_iterations):
-            while not node.is_leaf():
-                node = root.select_child_PUCT(C)
-                if not node:
-                    return
-                if not np.array_equal(firstBorad, game.board):
-                    print("but why??")
-            new_node = node.add_random_child(self.encode_type, self.model)
+            # selection
+            node = self.select(root, self._select_child_PUCT, C)
 
-            back_propagation(new_node, new_node.Q)
-
-            real_Q = np.array([game.reward()]).reshape(1, 1)
-            train_P = node.calculate_P()
-            self.model.train(
-                node.encode_state(self.encode_type),
-                [train_P.reshape(1, 200), real_Q],
-                last_epoch,
-                num_epochs,
+            # get policy, value
+            policy, value = node.decode_state(
+                self.model.predict(node.encode_state(self.encode_type))
             )
-            last_epoch += num_epochs
+
+            # expansion
+            if node.game.outcome() == Snort.ONGOING:
+                new_node = self.expand(node, policy)
+            else:
+                new_node = node
+
+            # back propagation
+            self.back_propagation(new_node, value)
             node = root
+
+    def select(self, root: Node, method, *args):
+        result_node = root
+        # while the nodes on the way are already dunzo, but the position is ongoing
+        # (explored all moves = dunzo)
+        while (
+            len(np.argwhere(result_node.unexplored_moves == True)) == 0
+            and result_node.game.outcome() == Snort.ONGOING
+        ):
+            node = method(*args, node=result_node)
+            if node == None:
+                break
+
+            result_node = node
+
+        return result_node
+
+    def expand(self, node: Node, policy):
+        # expand all possible moves since there
+        # is no need for a simulation anymore
+        for move, probability in enumerate(policy):
+            if probability > 0:
+                # create game clone
+                game_clone = node.game.clone()
+                game_clone.make_move(move)
+
+                # create child and add to parent (node)
+                new_node = Node(game_clone, node)
+                node.children.append(new_node)
+        return new_node
+
+    def back_propagation(self, node: Node, value):
+        node.Q += value
+        node.visits += 1
+
+        # propagate
+        if node.parent:
+            self.update_backwards(node.parent, value)
+
+    def _select_child_PUCT(self, c, node: Node):
+        # TODO: maybe need to change this formula a bit
+        def calculate_PUCT(parent: "Node", child_index: int, c):
+            child = parent.children[child_index]
+            return child.Q + c * parent.P[child_index][1] * (
+                np.sqrt(parent.visits) / (1 + child.visits)
+            )
+
+        best_child = None
+        best_PUCT = 0
+        for child_index in range(len(node.children)):
+            current_puct = calculate_PUCT(node, child_index, c)
+            if current_puct > best_PUCT:
+                best_PUCT = current_puct
+                best_child = node.children[child_index]
+
+        return best_child
 
     def best_move_to_do(self, game: Snort, turn):
         # TODO: add parent here maybe
