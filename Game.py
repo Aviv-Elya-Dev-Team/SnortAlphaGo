@@ -15,12 +15,15 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GRAY = (200, 200, 200)
 
-# screen constants
-SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 600
-CELL_SIZE = 120
+# board and cell sizes
+CELL_SIZE = 80
+BOARD_SIZE = 8
 
-BOARD_SIZE = 5
+# screen constants
+SCREEN_WIDTH = CELL_SIZE * 8
+SCREEN_HEIGHT = CELL_SIZE * 8
+
+# staring player color
 STARTING_PLAYER = Snort.RED
 SECOND_PLAYER = Snort.other_player(STARTING_PLAYER)
 
