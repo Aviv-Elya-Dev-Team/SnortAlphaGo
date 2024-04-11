@@ -2,7 +2,7 @@ import numpy
 
 
 class Snort:
-    EMPTY, BLACK, RED, BLUE, ONGOING = 0, 1, 2, 3, 4
+    EMPTY, BLACK, RED, BLUE, DRAW, ONGOING = 0, 1, 2, 3, 4, 5
 
     def __init__(self, starting_player, board_size=10, num_black_squares=3) -> None:
         self.board_size = board_size
@@ -119,13 +119,22 @@ class Snort:
     # returns either RED, BLUE or ONGOING to tell either
     # who won or if the game is still ongoing
     def outcome(self):
+        red_won = False
+        blue_won = False
         if numpy.all(self.blue_legal_moves == False):
+            red_won = True
+
+        if numpy.all(self.red_legal_moves == False):
+            blue_won = True
+
+        if blue_won and red_won:
+            return self.DRAW
+        if blue_won:
+            return self.BLUE
+        if red_won:
             return self.RED
 
-        elif numpy.all(self.red_legal_moves == False):
-            return self.BLUE
-        else:
-            return self.ONGOING
+        return self.ONGOING
 
     # returns the last move that was made
     def last_move(self):

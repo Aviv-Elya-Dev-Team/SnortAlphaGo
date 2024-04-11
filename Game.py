@@ -18,8 +18,9 @@ GRAY = (200, 200, 200)
 # screen constants
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
-CELL_SIZE = 60
+CELL_SIZE = 120
 
+BOARD_SIZE = 5
 STARTING_PLAYER = Snort.RED
 SECOND_PLAYER = Snort.other_player(STARTING_PLAYER)
 
@@ -45,13 +46,15 @@ class SnortGameVisualizer:
         self.agents = {STARTING_PLAYER: None, Snort.other_player(STARTING_PLAYER): None}
 
         if self.player_type == self.PLAYER_VS_CPU:
-            self.agents[STARTING_PLAYER] = "Player"
+            self.agents[SECOND_PLAYER] = "Player"
 
             # Agent
             # self.agents[Board.RED] = Agent(Network(model_type_cpu1), model_type_cpu1)
 
             # MCTS Agent
-            self.agents[SECOND_PLAYER] = MCTSAgent(self.game, self.game.current_player)
+            self.agents[STARTING_PLAYER] = MCTSAgent(
+                self.game, self.game.current_player
+            )
 
         elif self.player_type == self.CPU_VS_CPU:
             self.agents[STARTING_PLAYER] = Agent(
@@ -117,11 +120,11 @@ class SnortGameVisualizer:
             if self.player_type == self.PVP:
                 running = self.handle_events()
             elif self.player_type == self.PLAYER_VS_CPU:
-                if self.game.current_player == STARTING_PLAYER:
+                if self.game.current_player == SECOND_PLAYER:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[SECOND_PLAYER].best_move_to_do()
+                        move = self.agents[STARTING_PLAYER].best_move_to_do()
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
@@ -204,7 +207,7 @@ class SnortGameVisualizer:
 
 def main():
     # create a board (example board, use real board later)
-    game = Snort(STARTING_PLAYER)
+    game = Snort(STARTING_PLAYER, board_size=BOARD_SIZE)
     if len(argv) == 2:
         visualizer = SnortGameVisualizer(game, int(argv[1]))
     if len(argv) == 3:

@@ -18,8 +18,8 @@ class MCTSAgent:
         self.game = game
         self.starting_player = starting_player
 
-    def best_move_to_do(self, num_iterations=1000):
-        root = Node(copy.deepcopy(self.game))
+    def best_move_to_do(self, num_iterations=30000):
+        root = Node(self.game.clone())
 
         C = 0.8
 
@@ -101,10 +101,14 @@ class MCTSAgent:
         return outcome
 
     def update_backwards(self, node: Node, outcome):
-        # update
+        # update visits
         node.visits += 1
-        if outcome == node.game.other_player(self.game.current_player):
+
+        # update Q
+        if outcome == node.game.other_player(node.game.current_player):
             node.Q += 1
+        elif outcome == Snort.DRAW:
+            node.Q += 0.5
 
         # propagate
         if node.parent:
