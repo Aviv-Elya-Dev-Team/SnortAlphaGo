@@ -172,7 +172,7 @@ class Agent:
             self.model.load_model(f"models/model{self.encode_type}.keras")
             self.model.compile_model()
 
-    def best_move(self, num_iterations=1000, num_epochs=10):
+    def best_move(self, num_iterations=200, num_epochs=10):
         root: Node = Node(self.game.clone())
 
         C = 0.8
@@ -185,16 +185,16 @@ class Agent:
             policy, value = node.decode_state(
                 self.model.predict(node.encode_state(self.encode_type))
             )
+            value = value[0]
 
             # expansion
-            if node.game.outcome() == Snort.ONGOING:
-                new_node = self.expand(node, policy)
-            else:
-                new_node = node
+            self.expand(node, policy)
 
             # back propagation
-            self.back_propagation(new_node, value)
+            self.back_propagation(node, value)
             node = root
+
+        return self.best_move_to_do(root)
 
     def select(self, root: Node, method, *args):
         result_node = root
@@ -215,16 +215,18 @@ class Agent:
     def expand(self, node: Node, policy):
         # expand all possible moves since there
         # is no need for a simulation anymore
-        for move, probability in enumerate(policy):
+        node.unexplored_moves[:] = False  # explore everything
+        for move, probability in numpy.ndenumerate(policy):
             if probability > 0:
+
                 # create game clone
                 game_clone = node.game.clone()
                 game_clone.make_move(move)
 
                 # create child and add to parent (node)
                 new_node = Node(game_clone, node)
+                new_node.P = probability
                 node.children.append(new_node)
-        return new_node
 
     def back_propagation(self, node: Node, value):
         node.Q += value
@@ -232,40 +234,34 @@ class Agent:
 
         # propagate
         if node.parent:
-            self.update_backwards(node.parent, value)
+            self.back_propagation(node.parent, value)
 
     def _select_child_PUCT(self, c, node: Node):
         # TODO: maybe need to change this formula a bit
-        def calculate_PUCT(parent: "Node", child_index: int, c):
-            child = parent.children[child_index]
-            return child.Q + c * parent.P[child_index][1] * (
-                np.sqrt(parent.visits) / (1 + child.visits)
-            )
+        def calculate_PUCT(parent: "Node", child: "Node", c):
+            return child.Q + c * child.P * (np.sqrt(parent.visits) / (1 + child.visits))
 
         best_child = None
         best_PUCT = 0
-        for child_index in range(len(node.children)):
-            current_puct = calculate_PUCT(node, child_index, c)
+        for child in node.children:
+            current_puct = calculate_PUCT(node, child, c)
             if current_puct > best_PUCT:
                 best_PUCT = current_puct
-                best_child = node.children[child_index]
+                best_child = child
 
         return best_child
 
-    def best_move_to_do(self, game: Snort, turn):
-        # TODO: add parent here maybe
-        node = Node(game)
-        red_moves_p, blue_moves_p, Q = node.decode_state(
-            self.model.predict(node.encode_state(self.encode_type))
-        )
-        red_moves_p, blue_moves_p = red_moves_p.reshape(
-            (game.board_size, game.board_size)
-        ), blue_moves_p.reshape((game.board_size, game.board_size))
-        return (
-            np.unravel_index(np.argmax(red_moves_p), red_moves_p.shape)
-            if turn == Snort.RED
-            else np.unravel_index(np.argmax(blue_moves_p), blue_moves_p.shape)
-        )
+    def best_move_to_do(self, root: "Node"):
+        # most visits = best child (its what its)
+        probabilities = np.zeros((self.game.board_size, self.game.board_size))
+
+        for child in root.children:
+            probabilities[child.game.move_history[-1]] = child.visits
+        probabilities /= np.sum(probabilities)
+
+        max_index = numpy.argmax(probabilities)
+        move = np.unravel_index(max_index, probabilities.shape)
+        return move
 
     # TODO: remove this function from the Agent class (WTF)
     def train(self, log_progress={}, num_iterations=1000, num_epochs=10):

@@ -11,7 +11,7 @@ class Node:
     def __init__(self, game: Snort, parent: "Node" = None) -> None:
         self.game = game
         self.Q = 0
-        self.P = []
+        self.P: int = 0
         self.parent = parent
         self.children: List[Node] = []
         self.visits = 0
@@ -102,26 +102,16 @@ class Node:
             ).reshape(-1, max(encode_board.shape) + max(encode_legal.shape))
 
     def decode_state(self, vector):
-        P, Q = np.array(vector[0][0]), np.array(vector[1][0])
-        red_moves, blue_moves = (
-            P[:100].reshape(self.game.board_size, self.game.board_size),
-            P[100:].reshape(self.game.board_size, self.game.board_size),
-        )
+        policy, value = np.array(vector[0][0]), np.array(vector[1][0])
+        legal_moves = self.game.get_legal_moves(self.game.current_player)
 
-        red_moves, blue_moves = (
-            softmax(red_moves.flatten()).reshape(
-                self.game.board_size, self.game.board_size
-            ),
-            softmax(red_moves.flatten()).reshape(
-                self.game.board_size, self.game.board_size
-            ),
-        )
+        # make policy the same shape as board
+        policy = policy.flatten().reshape(self.game.board_size, self.game.board_size)
 
-        (
-            red_moves[self.game.red_legal_moves == False],
-            blue_moves[self.game.blue_legal_moves == False],
-        ) = (0, 0)
-        return red_moves, blue_moves, Q
+        # clear all values that are not possible
+        policy[legal_moves == False] = 0
+
+        return policy, value
 
     def init_P_childs(self, moves_p):
         for child in self.children:
