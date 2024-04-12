@@ -194,15 +194,21 @@ class Agent:
             self.back_propagation(node, value)
             node = root
 
-        return self.best_move_to_do(root)
+        # return probabilities to choose each child based on visits
+        probabilities = np.zeros((self.game.board_size, self.game.board_size))
+
+        for child in root.children:
+            probabilities[child.game.move_history[-1]] = child.visits
+        probabilities /= np.sum(probabilities)
+
+        return probabilities
 
     def select(self, root: Node, method, *args):
         result_node = root
         # while the nodes on the way are already dunzo, but the position is ongoing
         # (explored all moves = dunzo)
         while (
-            len(np.argwhere(result_node.unexplored_moves == True)) == 0
-            and result_node.game.outcome() == Snort.ONGOING
+            result_node.fully_explored and result_node.game.outcome() == Snort.ONGOING
         ):
             node = method(*args, node=result_node)
             if node == None:
@@ -215,7 +221,7 @@ class Agent:
     def expand(self, node: Node, policy):
         # expand all possible moves since there
         # is no need for a simulation anymore
-        node.unexplored_moves[:] = False  # explore everything
+        node.fully_explored = True  # explore everything
         for move, probability in numpy.ndenumerate(policy):
             if probability > 0:
 
@@ -226,7 +232,7 @@ class Agent:
                 # create child and add to parent (node)
                 new_node = Node(game_clone, node)
                 new_node.P = probability
-                new_node.visits += 1
+                new_node.visits += 1  # TODO: dont know about this, it doesn't work without it maybe need to change PUCT
                 node.children.append(new_node)
 
     def back_propagation(self, node: Node, value):
@@ -238,7 +244,6 @@ class Agent:
             self.back_propagation(node.parent, value)
 
     def _select_child_PUCT(self, c, node: Node):
-        # TODO: maybe need to change this formula a bit
         def calculate_PUCT(parent: "Node", child: "Node", c):
             if child.visits == 0:
                 q_value = 0
@@ -256,23 +261,38 @@ class Agent:
 
         return best_child
 
-    def best_move_to_do(self, root: "Node"):
+    def best_move_to_do(self, probabilities):
         # most visits = best child (its what its)
-        probabilities = np.zeros((self.game.board_size, self.game.board_size))
-
-        for child in root.children:
-            probabilities[child.game.move_history[-1]] = child.visits
-        probabilities /= np.sum(probabilities)
-
         max_index = numpy.argmax(probabilities)
         move = np.unravel_index(max_index, probabilities.shape)
         return move
 
-    # TODO: remove this function from the Agent class (WTF)
-    def train(self, log_progress={}, num_iterations=1000, num_epochs=10):
-        game = Snort(self.starting_player)
+    def train(
+        self,
+        log_progress={},
+        num_games=500,
+        num_sessions=3,
+        num_iterations=100,
+        num_epochs=10,
+    ):
+        # play num_games games
+        for session in range(num_sessions):
+            games_history = []
+
+            for game_index in range(num_games):
+                games_history.append(
+                    self.play_against_self(
+                        log_progress, self.game.board_size, self.game.num_black_squares
+                    )
+                )
+
+    # TODO: work on this
+    def play_against_self(self, log_progress, board_size, num_black_squares):
         turn = np.random.choice([Snort.RED, Snort.BLUE])
+        game = Snort(turn, board_size, num_black_squares)
         while game.outcome() == Snort.ONGOING:
+
+            random_move = numpy.random.choice(p=)
             self.best_move(turn, copy.deepcopy(game), num_iterations, num_epochs)
             move = self.best_move_to_do(game, turn)
             game.make_move(turn, move)

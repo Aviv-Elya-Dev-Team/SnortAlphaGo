@@ -152,12 +152,18 @@ class SnortGameVisualizer:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[SECOND_PLAYER_COLOR].best_move()
+                        probabilities = self.agents[SECOND_PLAYER_COLOR].best_move()
+                        move = self.agents[SECOND_PLAYER_COLOR].best_move_to_do(
+                            probabilities
+                        )
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
                 if self.winner == -1:
-                    move = self.agents[self.game.current_player].best_move()
+                    probabilities = self.agents[self.game.current_player].best_move()
+                    move = self.agents[self.game.current_player].best_move_to_do(
+                        probabilities
+                    )
                     self.handle_click(move, True)
 
             self.draw_board()

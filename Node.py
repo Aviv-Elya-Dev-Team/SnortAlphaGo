@@ -18,6 +18,7 @@ class Node:
         self.unexplored_moves = numpy.copy(
             self.game.get_legal_moves(self.game.current_player)
         )
+        self.fully_explored = False
 
     def calculate_P(self):
         result = np.zeros((self.game.board_size, self.game.board_size))
