@@ -1,5 +1,5 @@
 from Snort import Snort
-from Node import Node, back_propagation, ENCODE_BOTH, ENCODE_LEGAL, ENCODE_BOARD
+from Node import Node, ENCODE_BOTH, ENCODE_LEGAL, ENCODE_BOARD
 from Network import Network
 import numpy as np, numpy
 from os.path import exists

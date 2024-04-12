@@ -64,7 +64,7 @@ class Node:
                     self.game.blue_legal_moves.flatten().astype(int),
                     [1, 0] if self.game.current_player == Snort.RED else [0, 1],
                 )
-            ).reshape(-1, 202)
+            ).reshape(-1, (self.game.board_size * self.game.board_size * 2) + 2)
         if encode_type == ENCODE_BOARD:
             grid = self.game.board
             red_board, blue_board, black_board = (
@@ -85,24 +85,24 @@ class Node:
             return np.concatenate(
                 (
                     red_board.flatten(),
-                    black_board.flatten(),
+                    blue_board.flatten(),
                     black_board.flatten(),
                     [1, 0] if self.game.current_player == Snort.RED else [0, 1],
                 )
-                # TODO: get rid of hard coded values
-            ).reshape(-1, 302)
+            ).reshape(-1, ((self.game.board_size * self.game.board_size) * 3) + 2)
         if encode_type == ENCODE_BOTH:
+            encode_board = self.encode_state(ENCODE_BOARD)[:, :-2]
+            encode_legal = self.encode_state(ENCODE_LEGAL)
             return np.concatenate(
                 (
-                    self.encode_state(ENCODE_BOARD)[:, :-2],
-                    self.encode_state(ENCODE_LEGAL),
+                    encode_board,
+                    encode_legal,
                 ),
                 axis=1,
-            ).reshape(-1, 502)
+            ).reshape(-1, max(encode_board.shape) + max(encode_legal.shape))
 
     def decode_state(self, vector):
-        P, Q = vector[0][0], vector[1][0]
-        P, Q = np.array(P), np.array(Q)
+        P, Q = np.array(vector[0][0]), np.array(vector[1][0])
         red_moves, blue_moves = (
             P[:100].reshape(self.game.board_size, self.game.board_size),
             P[100:].reshape(self.game.board_size, self.game.board_size),
@@ -158,11 +158,3 @@ class Node:
 
     def is_leaf(self):
         return np.any(self.unexplored_moves == True)
-
-
-def back_propagation(node: Node, value):
-    # TODO: maybe negative Q is bad
-    node.visits += 1
-    node.Q += 1 / (node.visits)
-    if node.parent:
-        back_propagation(node.parent, value)
