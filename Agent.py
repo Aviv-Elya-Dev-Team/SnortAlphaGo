@@ -226,6 +226,7 @@ class Agent:
                 # create child and add to parent (node)
                 new_node = Node(game_clone, node)
                 new_node.P = probability
+                new_node.visits += 1
                 node.children.append(new_node)
 
     def back_propagation(self, node: Node, value):
@@ -239,10 +240,14 @@ class Agent:
     def _select_child_PUCT(self, c, node: Node):
         # TODO: maybe need to change this formula a bit
         def calculate_PUCT(parent: "Node", child: "Node", c):
-            return child.Q + c * child.P * (np.sqrt(parent.visits) / (1 + child.visits))
+            if child.visits == 0:
+                q_value = 0
+            else:
+                q_value = 1 - ((child.Q / child.visits) + 1) / 2
+            return q_value + c * child.P * (np.sqrt(parent.visits) / (1 + child.visits))
 
         best_child = None
-        best_PUCT = 0
+        best_PUCT = -numpy.inf
         for child in node.children:
             current_puct = calculate_PUCT(node, child, c)
             if current_puct > best_PUCT:
