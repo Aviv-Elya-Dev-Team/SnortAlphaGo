@@ -7,6 +7,7 @@ from sys import argv
 import time
 import threading
 import random
+import configparser
 
 import copy
 
@@ -139,14 +140,14 @@ class Agent:
         self,
         game: Snort,
         starting_player,
-        model: Network = Network(ENCODE_LEGAL),
+        model: Network = None,
         encode_type=ENCODE_LEGAL,
     ) -> None:
 
-        self.model = model
         self.encode_type = encode_type
         self.starting_player = starting_player
         self.game = game
+        self.model = Network(ENCODE_LEGAL, self.game.board_size)
         self.init_model()
 
     def init_model(self):
@@ -282,13 +283,23 @@ class Agent:
 
 
 def main():
+    # Create a ConfigParser object
+    config = configparser.ConfigParser()
+
+    # read board size from config file
+    config.read("config.ini")
+
+    board_size = config.get("Snort", "board_size")
     encode_type = ENCODE_LEGAL
     if len(argv) == 2:
         encode_type = int(argv[1])
     model = Network(encode_type)
     if exists(f"models/model{encode_type}.keras"):
         model.load_model(f"models/model{encode_type}.keras")
-    r = Agent(model, encode_type)
+    r = Agent(
+        model,
+        encode_type,
+    )
 
     timer_thread = threading.Thread(target=timer)
     timer_thread.start()

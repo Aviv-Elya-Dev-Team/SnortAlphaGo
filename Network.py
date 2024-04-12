@@ -6,6 +6,35 @@ from keras.optimizers import Adam
 from Node import ENCODE_BOARD, ENCODE_LEGAL, ENCODE_BOTH
 
 
+class Network:
+    def __init__(self, encode_type, board_size) -> None:
+        self.board_size = board_size
+        self.encode_type = encode_type
+        self.network = create_snort_model(self.encode_type)
+        self.input_size = (self.board_size * self.board_size * 2) + 2
+        if encode_type == ENCODE_BOARD:
+            self.input_size = (self.board_size * self.board_size * 3) + 2
+        elif encode_type == ENCODE_BOTH:
+            self.input_size = (self.board_size * self.board_size * 5) + 2
+
+    def predict(self, state):
+        return self.network.predict(state, verbose=0)
+
+    def save_model(self, filename):
+        self.network.save(filename)
+
+    def load_model(self, filename):
+        self.network = load_model(filename)
+
+    def compile_model(self):
+        self.network.compile(
+            optimizer=Adam(), loss=[categorical_crossentropy, mean_squared_error]
+        )
+
+    def train(self, x, y, init_epoch, epochs):
+        self.network.fit(x, y, epochs=epochs, verbose=0, use_multiprocessing=True)
+
+
 def create_snort_model(encode_type):
 
     # Define input layer
@@ -34,31 +63,3 @@ def create_snort_model(encode_type):
     model.compile(optimizer=Adam(), loss=[categorical_crossentropy, mean_squared_error])
 
     return model
-
-
-class Network:
-    def __init__(self, encode_type) -> None:
-        self.encode_type = encode_type
-        self.network = create_snort_model(self.encode_type)
-        self.input_size = 202
-        if encode_type == ENCODE_BOARD:
-            self.input_size = 302
-        elif encode_type == ENCODE_BOTH:
-            self.input_size = 502
-
-    def predict(self, state):
-        return self.network.predict(state, verbose=0)
-
-    def save_model(self, filename):
-        self.network.save(filename)
-
-    def load_model(self, filename):
-        self.network = load_model(filename)
-
-    def compile_model(self):
-        self.network.compile(
-            optimizer=Adam(), loss=[categorical_crossentropy, mean_squared_error]
-        )
-
-    def train(self, x, y, init_epoch, epochs):
-        self.network.fit(x, y, epochs=epochs, verbose=0, use_multiprocessing=True)

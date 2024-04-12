@@ -55,7 +55,7 @@ class SnortGameVisualizer:
             self.agents[SECOND_PLAYER] = Agent(
                 self.game,
                 self.game.current_player,
-                Network(model_type_cpu1),
+                Network(model_type_cpu1, self.game.board_size),
                 model_type_cpu1,
             )
 
