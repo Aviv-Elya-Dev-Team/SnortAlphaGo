@@ -6,6 +6,8 @@ from Network import Network
 import numpy as np, numpy
 from sys import argv
 import time
+import configparser
+from Config import Config
 
 # Define colors
 WHITE = (255, 255, 255)
@@ -15,17 +17,21 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GRAY = (200, 200, 200)
 
+# retrieve values from the config file
+config = Config.get_config()
+
 # board and cell sizes
-CELL_SIZE = 80
-BOARD_SIZE = 8
+CELL_SIZE = int(config.get("GameUI", "cell_size"))
+BOARD_SIZE = int(config.get("Snort", "board_size"))
 
 # screen constants
-SCREEN_WIDTH = CELL_SIZE * 8
-SCREEN_HEIGHT = CELL_SIZE * 8
+SCREEN_WIDTH = int(config.get("GameUI", "screen_width"))
+SCREEN_HEIGHT = int(config.get("GameUI", "screen_height"))
 
-# staring player color
-STARTING_PLAYER = Snort.RED
-SECOND_PLAYER = Snort.other_player(STARTING_PLAYER)
+# staring player and colors
+STARTING_PLAYER_PVC = config.get("player_vs_cpu", "starting_player")
+STARTING_PLAYER_COLOR = int(config.get("GameUI", "starting_player_color"))
+SECOND_PLAYER_COLOR = Snort.other_player(STARTING_PLAYER_COLOR)
 
 
 class SnortGameVisualizer:
@@ -46,30 +52,44 @@ class SnortGameVisualizer:
 
         self.player_type = player_type
 
-        self.agents = {STARTING_PLAYER: None, Snort.other_player(STARTING_PLAYER): None}
+        self.agents = {STARTING_PLAYER_COLOR: None, SECOND_PLAYER_COLOR: None}
 
         if self.player_type == self.PLAYER_VS_CPU:
-            self.agents[STARTING_PLAYER] = "Player"
+            if STARTING_PLAYER_PVC == "Player":
+                self.agents[STARTING_PLAYER_COLOR] = "Player"
 
-            # Agent
-            self.agents[SECOND_PLAYER] = Agent(
-                self.game,
-                self.game.current_player,
-                Network(model_type_cpu1, self.game.board_size),
-                model_type_cpu1,
-            )
+                # Agent
+                self.agents[SECOND_PLAYER_COLOR] = Agent(
+                    self.game,
+                    self.game.current_player,
+                    Network(model_type_cpu1, self.game.board_size),
+                    model_type_cpu1,
+                )
 
-            # MCTS Agent
-            # self.agents[STARTING_PLAYER] = MCTSAgent(
-            #     self.game, self.game.current_player
-            # )
+                # MCTS Agent
+                # self.agents[STARTING_PLAYER] = MCTSAgent(
+                #     self.game, self.game.current_player
+                # )
+            else:
+                self.agents[STARTING_PLAYER_COLOR] = Agent(
+                    self.game,
+                    self.game.current_player,
+                    Network(model_type_cpu1, self.game.board_size),
+                    model_type_cpu1,
+                )
+                self.agents[SECOND_PLAYER_COLOR] = "Player"
+
+                # MCTS Agent
+                # self.agents[STARTING_PLAYER] = MCTSAgent(
+                #     self.game, self.game.current_player
+                # )
 
         elif self.player_type == self.CPU_VS_CPU:
-            self.agents[STARTING_PLAYER] = Agent(
-                Network(model_type_cpu1), model_type_cpu1
+            self.agents[STARTING_PLAYER_COLOR] = Agent(
+                Network(model_type_cpu1, BOARD_SIZE), model_type_cpu1
             )
-            self.agents[SECOND_PLAYER] = Agent(
-                Network(model_type_cpu2), model_type_cpu2
+            self.agents[SECOND_PLAYER_COLOR] = Agent(
+                Network(model_type_cpu2, BOARD_SIZE), model_type_cpu2
             )
 
     def draw_board(self):
@@ -114,7 +134,7 @@ class SnortGameVisualizer:
 
                 pygame.draw.circle(
                     self.screen,
-                    GREEN,
+                    RED if self.game.current_player == Snort.RED else BLUE,
                     (
                         col * CELL_SIZE + CELL_SIZE // 2,
                         row * CELL_SIZE + CELL_SIZE // 2,
@@ -128,11 +148,11 @@ class SnortGameVisualizer:
             if self.player_type == self.PVP:
                 running = self.handle_events()
             elif self.player_type == self.PLAYER_VS_CPU:
-                if self.game.current_player == STARTING_PLAYER:
+                if self.game.current_player == STARTING_PLAYER_COLOR:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        move = self.agents[SECOND_PLAYER].best_move()
+                        move = self.agents[SECOND_PLAYER_COLOR].best_move()
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
@@ -215,7 +235,7 @@ class SnortGameVisualizer:
 
 def main():
     # create a board (example board, use real board later)
-    game = Snort(STARTING_PLAYER, board_size=BOARD_SIZE)
+    game = Snort(STARTING_PLAYER_COLOR, board_size=BOARD_SIZE)
     if len(argv) == 2:
         visualizer = SnortGameVisualizer(game, int(argv[1]))
     if len(argv) == 3:
