@@ -308,6 +308,7 @@ class Agent:
         # initialize a game with a random starting player
         random_player = np.random.choice([Snort.RED, Snort.BLUE])
         game = Snort(random_player, board_size, num_black_squares)
+        self.game = game  
 
         history = []
         outcome = game.outcome()
@@ -336,7 +337,7 @@ class Agent:
                 for previous_game, probabilities, current_player in history:
                     history_outcome = (
                         outcome_map[outcome]
-                        if outcome == game.current_player
+                        if outcome == current_player
                         else outcome_map[game.other_player(outcome)]
                     )
                     result.append(
