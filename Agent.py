@@ -273,7 +273,7 @@ class Agent:
         log_progress={},
         num_games=10,
         num_sessions=3,
-        num_iterations=10,
+        num_iterations=60,
         num_epochs=10,
         batch_size=5,
     ):
