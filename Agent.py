@@ -8,8 +8,9 @@ import time
 import threading
 import random
 import configparser
-
+import tensorflow as tf
 import copy
+from tqdm import trange
 
 progress = {"progress": 0, "thread_running": True}
 
@@ -267,41 +268,104 @@ class Agent:
         move = np.unravel_index(max_index, probabilities.shape)
         return move
 
-    def train(
+    def learn(
         self,
         log_progress={},
         num_games=500,
         num_sessions=3,
         num_iterations=100,
         num_epochs=10,
+        batch_size=10,
     ):
         # play num_games games
         for session in range(num_sessions):
             games_history = []
 
+            # play games against self
             for game_index in range(num_games):
                 games_history.append(
                     self.play_against_self(
-                        log_progress, self.game.board_size, self.game.num_black_squares
+                        self.game.board_size,
+                        self.game.num_black_squares,
+                        num_iterations,
+                        num_epochs,
                     )
                 )
 
-    # TODO: work on this
-    def play_against_self(self, log_progress, board_size, num_black_squares):
-        turn = np.random.choice([Snort.RED, Snort.BLUE])
-        game = Snort(turn, board_size, num_black_squares)
-        while game.outcome() == Snort.ONGOING:
+            # train on the games played
+            for epoch in trange(num_epochs):
+                self.train(games_history, batch_size)
 
-            random_move = numpy.random.choice(p=)
-            self.best_move(turn, copy.deepcopy(game), num_iterations, num_epochs)
-            move = self.best_move_to_do(game, turn)
-            game.make_move(turn, move)
-            turn = game.switch_player(turn)
+            # save model
+            self.model.save_model(f"models/model{self.encode_type}.keras")
 
-            log_progress["progress"] += 1
+    # play a game against yourself, and return a tuple (encoded_state, probabilities, outcome)
+    # of the last move in the game, who won and what were the probability distributions
+    def play_against_self(
+        self, board_size, num_black_squares, num_iterations, num_epochs
+    ):
+        # initialize a game with a random starting player
+        random_player = np.random.choice([Snort.RED, Snort.BLUE])
+        game = Snort(random_player, board_size, num_black_squares)
 
-        self.winner = game.switch_player(turn)
-        self.model.save_model(f"models/model{self.encode_type}.keras")
+        history = []
+        outcome = game.outcome()
+        while outcome == Snort.ONGOING:
+            # get "random move" from probabilities distributions
+            probabilities = self.best_move(num_iterations, num_epochs).flatten()
+
+            # record this game state in history
+            history.append((game.board[:], probabilities, game.current_player))
+
+            # choose a random move but with probability
+            # distributions from the MCTS best_move function
+            flat_distribution = probabilities.flatten()
+            random_index = np.random.choice(len(flat_distribution), p=flat_distribution)
+            random_move = np.unravel_index(random_index, probabilities.shape)
+
+            game.make_move(random_move)
+            outcome = game.outcome()
+            if outcome != Snort.ONGOING:
+                result = []
+                # arbitrarily choose that RED = 0 and BLUE = 1
+                # TODO: maybe change this arbitrary decision? idk
+                history_outcome = 0 if outcome == Snort.RED else 1
+                for state, probabilities, current_player in history:
+                    result.append((game.encode_state(), probabilities, history_outcome))
+
+                return result
+
+    def train(self, games_history, batch_size):
+        random.shuffle(games_history)
+        for batchIdx in range(0, len(games_history), batch_size):
+            # get batch sample
+            sample = games_history[
+                batchIdx : min(len(games_history) - 1, batchIdx + batch_size)
+            ]
+
+            encoded_states, probabilities, winning_players = zip(*sample)
+
+            encoded_states, probabilities, winning_players = (
+                np.array(encoded_states),
+                np.array(probabilities),
+                np.array(winning_players).reshape(-1, 1),
+            )
+
+            # convert data to TensorFlow tensors
+            encoded_states_tensor = tf.convert_to_tensor(
+                encoded_states, dtype=tf.float32
+            )
+            probabilities_tensor = tf.convert_to_tensor(probabilities, dtype=tf.float32)
+            winning_players_tensor = tf.convert_to_tensor(
+                winning_players, dtype=tf.float32
+            )
+
+            # train the model
+            self.model.fit(
+                encoded_states_tensor,
+                [probabilities_tensor, winning_players_tensor],
+                batch_size=batch_size,
+            )
 
 
 def timer():
@@ -323,7 +387,10 @@ def main():
     # read board size from config file
     config.read("config.ini")
 
-    board_size = config.get("Snort", "board_size")
+    board_size = int(config.get("Snort", "board_size"))
+    starting_player = int(config.get("GameUI", "starting_player_color"))
+    num_black_squares = int(config.get("Snort", "num_black_squares"))
+
     encode_type = ENCODE_LEGAL
 
     if len(argv) == 2:
@@ -333,12 +400,13 @@ def main():
     if exists(f"models/model{encode_type}.keras"):
         model.load_model(f"models/model{encode_type}.keras")
 
-    agent = Agent(model, encode_type)
+    game = Snort(starting_player, board_size, num_black_squares)
+    agent = Agent(game, starting_player, model, encode_type)
 
     timer_thread = threading.Thread(target=timer)
     timer_thread.start()
 
-    agent.train(log_progress=progress)
+    agent.learn(log_progress=progress)
 
     progress["thread_running"] = False
     timer_thread.join()  # Wait for the timer thread to finish
