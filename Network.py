@@ -31,9 +31,8 @@ class Network:
             optimizer=Adam(), loss=[categorical_crossentropy, mean_squared_error]
         )
 
-    def train(self, x, y, epochs):
-        self.network.fit(x, y, epochs=epochs, verbose=0, use_multiprocessing=True)
-
+    def train(self, x, y, epochs, batch_size):
+        self.network.fit(x, y, epochs=epochs, verbose=0, batch_size=batch_size)
     def create_snort_model(self, encode_type):
 
         # Define input layer

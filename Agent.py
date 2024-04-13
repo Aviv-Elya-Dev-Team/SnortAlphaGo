@@ -271,11 +271,11 @@ class Agent:
         self,
         encode_type,
         log_progress={},
-        num_games=100,
+        num_games=10,
         num_sessions=3,
-        num_iterations=50,
+        num_iterations=10,
         num_epochs=10,
-        batch_size=10,
+        batch_size=5,
     ):
         # play num_games games
         for session in range(num_sessions):
@@ -283,19 +283,18 @@ class Agent:
 
             # play games against self
             for game_index in trange(num_games):
-                games_history.append(
-                    self.play_against_self(
+                games_history += self.play_against_self(
                         self.game.board_size,
                         self.game.num_black_squares,
                         num_iterations,
                         num_epochs,
                         encode_type,
                     )
-                )
+                
 
             # train on the games played
             for epoch in trange(num_epochs):
-                self.train(games_history, batch_size, encode_type)
+                self.train(games_history, batch_size, num_epochs)
 
             # save model
             self.model.save_model(f"models/model{self.encode_type}.keras")
@@ -350,12 +349,13 @@ class Agent:
 
                 return result
 
-    def train(self, games_history, batch_size):
+    def train(self, games_history, batch_size, num_epochs):
         random.shuffle(games_history)
         for batchIdx in range(0, len(games_history), batch_size):
             # get batch sample
             sample = games_history[
-                batchIdx : min(len(games_history) - 1, batchIdx + batch_size)
+                # TODO: change to min
+                batchIdx : max(len(games_history) - 1, batchIdx + batch_size)
             ]
 
             encoded_states, probabilities, winning_players = zip(*sample)
@@ -365,6 +365,8 @@ class Agent:
                 np.array(probabilities),
                 np.array(winning_players).reshape(-1, 1),
             )
+
+            encoded_states = encoded_states.reshape(encoded_states.shape[0], encoded_states.shape[2])
 
             # convert data to TensorFlow tensors
             encoded_states_tensor = tf.convert_to_tensor(
@@ -376,10 +378,11 @@ class Agent:
             )
 
             # train the model
-            self.model.fit(
+            self.model.train(
                 encoded_states_tensor,
                 [probabilities_tensor, winning_players_tensor],
-                batch_size=batch_size,
+                epochs=num_epochs,
+                batch_size=batch_size
             )
 
 
