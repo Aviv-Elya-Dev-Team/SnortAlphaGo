@@ -281,13 +281,12 @@ class Agent:
         # play games against self
         for game_index in trange(num_games):
             games_history += self.play_against_self(
-                    self.game.board_size,
-                    self.game.num_black_squares,
-                    num_iterations,
-                    num_epochs,
-                    encode_type,
-                )
-            
+                self.game.board_size,
+                self.game.num_black_squares,
+                num_iterations,
+                num_epochs,
+                encode_type,
+            )
 
         # train on the games played
         for epoch in trange(num_epochs):
@@ -304,7 +303,7 @@ class Agent:
         # initialize a game with a random starting player
         random_player = np.random.choice([Snort.RED, Snort.BLUE])
         game = Snort(random_player, board_size, num_black_squares)
-        self.game = game  
+        self.game = game
 
         history = []
         outcome = game.outcome()
@@ -363,7 +362,9 @@ class Agent:
                 np.array(winning_players).reshape(-1, 1),
             )
 
-            encoded_states = encoded_states.reshape(encoded_states.shape[0], encoded_states.shape[2])
+            encoded_states = encoded_states.reshape(
+                encoded_states.shape[0], encoded_states.shape[2]
+            )
 
             # convert data to TensorFlow tensors
             encoded_states_tensor = tf.convert_to_tensor(
@@ -379,7 +380,7 @@ class Agent:
                 encoded_states_tensor,
                 [probabilities_tensor, winning_players_tensor],
                 epochs=num_epochs,
-                batch_size=batch_size
+                batch_size=batch_size,
             )
 
 
