@@ -272,32 +272,29 @@ class Agent:
         encode_type,
         log_progress={},
         num_games=10,
-        num_sessions=3,
         num_iterations=60,
         num_epochs=10,
         batch_size=5,
     ):
-        # play num_games games
-        for session in range(num_sessions):
-            games_history = []
+        games_history = []
 
-            # play games against self
-            for game_index in trange(num_games):
-                games_history += self.play_against_self(
-                        self.game.board_size,
-                        self.game.num_black_squares,
-                        num_iterations,
-                        num_epochs,
-                        encode_type,
-                    )
-                
+        # play games against self
+        for game_index in trange(num_games):
+            games_history += self.play_against_self(
+                    self.game.board_size,
+                    self.game.num_black_squares,
+                    num_iterations,
+                    num_epochs,
+                    encode_type,
+                )
+            
 
-            # train on the games played
-            for epoch in trange(num_epochs):
-                self.train(games_history, batch_size, num_epochs)
+        # train on the games played
+        for epoch in trange(num_epochs):
+            self.train(games_history, batch_size, num_epochs)
 
-            # save model
-            self.model.save_model(f"models/model{self.encode_type}.keras")
+        # save model
+        self.model.save_model(f"models/model{self.encode_type}.keras")
 
     # play a game against yourself, and return a tuple (encoded_state, probabilities, outcome)
     # of the last move in the game, who won and what were the probability distributions
