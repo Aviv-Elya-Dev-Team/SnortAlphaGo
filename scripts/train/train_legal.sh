@@ -1,6 +1,5 @@
 #!/bin/bash
 
-while true;
-do
-    python3 Agent.py 0
+while true; do
+    python Agent.py 0
 done
