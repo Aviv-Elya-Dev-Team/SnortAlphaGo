@@ -1,5 +1,5 @@
 #!/bin/bash
 
 while true; do
-    python Agent.py 2
+    python3 Agent.py 2
 done
