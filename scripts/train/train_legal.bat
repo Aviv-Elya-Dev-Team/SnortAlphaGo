@@ -1,4 +1,6 @@
-@echo off
-:loop
-python ../../Agent.py 0
-goto loop
+#!/bin/bash
+
+while :
+do
+    python3 Agent.py 0
+done
