@@ -2,5 +2,5 @@
 
 while :
 do
-    python3 Agent.py 2
+    python3 python ../../Agent.py 2
 done
