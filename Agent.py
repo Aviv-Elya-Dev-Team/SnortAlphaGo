@@ -7,9 +7,8 @@ from sys import argv
 import time
 import threading
 import random
-import configparser
 import tensorflow as tf
-import copy
+from Config import Config
 from tqdm import trange
 
 progress = {"progress": 0, "thread_running": True}
@@ -270,10 +269,11 @@ class Agent:
 
     def learn(
         self,
+        encode_type,
         log_progress={},
-        num_games=500,
+        num_games=100,
         num_sessions=3,
-        num_iterations=100,
+        num_iterations=50,
         num_epochs=10,
         batch_size=10,
     ):
@@ -282,19 +282,20 @@ class Agent:
             games_history = []
 
             # play games against self
-            for game_index in range(num_games):
+            for game_index in trange(num_games):
                 games_history.append(
                     self.play_against_self(
                         self.game.board_size,
                         self.game.num_black_squares,
                         num_iterations,
                         num_epochs,
+                        encode_type,
                     )
                 )
 
             # train on the games played
             for epoch in trange(num_epochs):
-                self.train(games_history, batch_size)
+                self.train(games_history, batch_size, encode_type)
 
             # save model
             self.model.save_model(f"models/model{self.encode_type}.keras")
@@ -302,7 +303,7 @@ class Agent:
     # play a game against yourself, and return a tuple (encoded_state, probabilities, outcome)
     # of the last move in the game, who won and what were the probability distributions
     def play_against_self(
-        self, board_size, num_black_squares, num_iterations, num_epochs
+        self, board_size, num_black_squares, num_iterations, num_epochs, encode_type
     ):
         # initialize a game with a random starting player
         random_player = np.random.choice([Snort.RED, Snort.BLUE])
@@ -312,26 +313,39 @@ class Agent:
         outcome = game.outcome()
         while outcome == Snort.ONGOING:
             # get "random move" from probabilities distributions
-            probabilities = self.best_move(num_iterations, num_epochs).flatten()
+            probabilities = self.best_move(num_iterations, num_epochs)
+            flat_probabilities = probabilities.flatten()
 
             # record this game state in history
-            history.append((game.board[:], probabilities, game.current_player))
+            history.append((game.clone(), flat_probabilities, game.current_player))
 
             # choose a random move but with probability
             # distributions from the MCTS best_move function
-            flat_distribution = probabilities.flatten()
-            random_index = np.random.choice(len(flat_distribution), p=flat_distribution)
+            random_index = np.random.choice(
+                len(flat_probabilities), p=flat_probabilities
+            )
             random_move = np.unravel_index(random_index, probabilities.shape)
 
             game.make_move(random_move)
             outcome = game.outcome()
             if outcome != Snort.ONGOING:
                 result = []
-                # arbitrarily choose that RED = 0 and BLUE = 1
+                # arbitrarily choose that RED = -1 and BLUE = 1
                 # TODO: maybe change this arbitrary decision? idk
-                history_outcome = 0 if outcome == Snort.RED else 1
-                for state, probabilities, current_player in history:
-                    result.append((game.encode_state(), probabilities, history_outcome))
+                outcome_map = {Snort.RED: -1, Snort.BLUE: 1}
+                for previous_game, probabilities, current_player in history:
+                    history_outcome = (
+                        outcome_map[outcome]
+                        if outcome == game.current_player
+                        else outcome_map[game.other_player(outcome)]
+                    )
+                    result.append(
+                        (
+                            previous_game.encode_state(encode_type),
+                            probabilities,
+                            history_outcome,
+                        )
+                    )
 
                 return result
 
@@ -381,16 +395,13 @@ def timer():
 
 
 def main():
-    # Create a ConfigParser object
-    config = configparser.ConfigParser()
 
-    # read board size from config file
-    config.read("config.ini")
+    config = Config.get_config()
 
+    # init variables
     board_size = int(config.get("Snort", "board_size"))
     starting_player = int(config.get("GameUI", "starting_player_color"))
     num_black_squares = int(config.get("Snort", "num_black_squares"))
-
     encode_type = ENCODE_LEGAL
 
     if len(argv) == 2:
@@ -403,14 +414,14 @@ def main():
     game = Snort(starting_player, board_size, num_black_squares)
     agent = Agent(game, starting_player, model, encode_type)
 
-    timer_thread = threading.Thread(target=timer)
-    timer_thread.start()
+    # timer_thread = threading.Thread(target=timer)
+    # timer_thread.start()
 
-    agent.learn(log_progress=progress)
+    agent.learn(encode_type, log_progress=progress)
 
-    progress["thread_running"] = False
-    timer_thread.join()  # Wait for the timer thread to finish
-    print("\ndone")
+    # progress["thread_running"] = False
+    # timer_thread.join()  # Wait for the timer thread to finish
+    # print("\ndone")
 
 
 if __name__ == "__main__":

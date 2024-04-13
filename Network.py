@@ -46,8 +46,8 @@ class Network:
         input_layer = Input(shape=(input_size,))
 
         # Define shared hidden layers
-        shared_layer_1 = Dense(200, activation="relu")(input_layer)
-        shared_layer_2 = Dense(200, activation="relu")(shared_layer_1)
+        shared_layer_1 = Dense(20, activation="relu")(input_layer)
+        shared_layer_2 = Dense(20, activation="relu")(shared_layer_1)
 
         # First head
         head1 = Dense(
