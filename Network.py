@@ -2,13 +2,16 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import random
-
+import torch.nn.functional as F
+import numpy
+from tqdm import trange
 
 # Define the neural network class
 class Network(nn.Module):
     ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
     def __init__(self, encode_type, board_size):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         super(Network, self).__init__()
         self.hidden_layer_size = board_size**2
         self.board_size = board_size
@@ -34,6 +37,7 @@ class Network(nn.Module):
             return (self.board_size * self.board_size * 2) + 2
 
     def forward(self, x):
+        x = x.to(self.shared_layer_1.weight.dtype)
         x = torch.relu(self.shared_layer_1(x))
         x = torch.relu(self.shared_layer_2(x))
         out1 = torch.softmax(self.head1(x), dim=-1)
@@ -44,27 +48,31 @@ class Network(nn.Module):
         if batch_size == -1:
             batch_size = len(games_history)
 
-        for epoch in epochs:
+        for epoch in trange(epochs):
             random.shuffle(games_history)
             for batchIdx in range(0, len(games_history), batch_size):
                 # get batch sample
                 sample = games_history[
-                    batchIdx : min(len(games_history) - 1, batchIdx + batch_size)
+                    batchIdx : min(len(games_history), batchIdx + batch_size)
                 ]
-
                 encoded_states, probabilities, winning_players = zip(*sample)
 
+                encoded_states, probabilities, winning_players = numpy.array(encoded_states), numpy.array(probabilities), numpy.array(winning_players).reshape(-1, 1)
+
                 encoded_states, probabilities, winning_players = (
-                    torch.tensor(encoded_states),
-                    torch.tensor(probabilities),
-                    torch.tensor(winning_players),  # .reshape(-1, 1),
+                    torch.tensor(encoded_states,dtype=torch.float32, device=self.device),
+                    torch.tensor(probabilities, dtype=torch.float32, device=self.device),
+                    torch.tensor(winning_players, dtype=torch.float32, device=self.device),  # .reshape(-1, 1),
                 )
 
                 # train the model
                 out_policy, out_value = self.predict(encoded_states)
-
-                policy_loss = nn.CrossEntropyLoss(out_policy, probabilities)
-                value_loss = nn.MSELoss(out_value, winning_players)
+                out_policy = out_policy.reshape(probabilities.shape)
+                out_value = out_value.reshape(winning_players.shape)
+                # probabilities = probabilities.reshape(out_policy.shape)
+                predicted_classes = torch.argmax(probabilities, dim=1)
+                policy_loss = F.cross_entropy(out_policy, probabilities)
+                value_loss = F.mse_loss(out_value, winning_players)
                 loss = policy_loss + value_loss
 
                 self.optimizer.zero_grad()
@@ -74,16 +82,17 @@ class Network(nn.Module):
     def predict(self, x_encoded):
         if torch.cuda.is_available():
             x_encoded = x_encoded.cuda()
-        return self(x_encoded)
+        else:
+            x_encoded = x_encoded.cpu()
+        return self(x_encoded.clone().detach())
 
     def save_model(self):
         torch.save(
-            self.state_dict(), f"model/model_{self.encode_type}_{self.board_size}.pth"
+            self.state_dict(), f"models/model_{self.encode_type}_{self.board_size}.pth"
         )
 
-    @staticmethod
-    def load_model(encode_type, board_size):
-        model: Network = torch.load(f"model/model_{encode_type}_{board_size}.pth")
-        model = model.load_state_dict(model)
-        model.eval()
+    @classmethod
+    def load_model(cls, encode_type, board_size):
+        model = cls(encode_type, board_size)
+        model.load_state_dict(torch.load(f"models/model_{encode_type}_{board_size}.pth"))
         return model

@@ -6,6 +6,7 @@ from os.path import exists
 from sys import argv
 from Config import Config
 from tqdm import trange
+import torch
 
 
 class MCTSAgent:
@@ -156,16 +157,17 @@ class Agent:
 
         if not exists(f"models/model_{self.encode_type}_{self.game.board_size}.pth"):
             games_history = []
-            state = self.game.encode_state(np.random.random((1, self.model.input_size)))
+            state = self.game.encode_state(self.encode_type)
             y_value_train = y_value_train[0]
-            games_history.append([(state, y_probabilities_train, y_value_train)])
+            games_history += [(state, y_probabilities_train, y_value_train)]
 
             self.model.train(games_history, epochs=1)
 
         else:
             self.model = Network.load_model(self.encode_type, self.game.board_size)
 
-    def best_move(self, num_iterations=200, num_epochs=10):
+    @torch.no_grad()
+    def best_move(self, num_iterations=1000):
         root: Node = Node(self.game.clone())
 
         C = 0.8
@@ -176,9 +178,14 @@ class Agent:
 
             # get policy, value
             policy, value = node.decode_state(
-                self.model.predict(node.encode_state(self.encode_type))
+                self.model.predict(torch.tensor(node.encode_state(self.encode_type)))
             )
-            value = value[0]
+            policy = torch.softmax(policy, dim=1).squeeze(0).cpu().numpy()
+            valid_moves = self.game.get_legal_moves(node.game.current_player)
+            policy *= valid_moves
+            policy /= np.sum(policy)
+            
+            value = value.item()
 
             # expansion
             self.expand(node, policy)
@@ -256,19 +263,19 @@ class Agent:
 
     def best_move_to_do(self, probabilities):
         # most visits = best child (its what its)
-        max_index = numpy.argmax(probabilities)
+        max_index = torch.argmax(probabilities)
         move = np.unravel_index(max_index, probabilities.shape)
         return move
 
     def learn(
         self,
         encode_type,
-        num_games=10,
-        num_iterations=60,
-        num_epochs=10,        
+        num_games=500,
+        num_iterations=10,
+        num_epochs=100,        
     ):
-        games_history = []
-        for iteration in num_iterations:
+        for iteration in range(num_iterations):
+            games_history = []
             # play games against self
             for game_index in trange(num_games):
                 games_history += self.play_against_self(
@@ -299,7 +306,7 @@ class Agent:
         outcome = game.outcome()
         while outcome == Snort.ONGOING:
             # get "random move" from probabilities distributions
-            probabilities = self.best_move(num_iterations, num_epochs)
+            probabilities = self.best_move(num_iterations)
             flat_probabilities = probabilities.flatten()
 
             # record this game state in history
@@ -352,7 +359,7 @@ def main():
     model = Network(encode_type, board_size)
 
     if exists(f"models/model_{encode_type}_{board_size}.pth"):
-        model.load_model(encode_type, board_size)
+        model = Network.load_model(encode_type, board_size)
 
     game = Snort(starting_player, board_size, num_black_squares)
     agent = Agent(game, starting_player, model, encode_type)

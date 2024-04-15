@@ -170,7 +170,7 @@ class Snort:
                     self.blue_legal_moves.flatten().astype(int),
                     [1, 0] if self.current_player == Snort.RED else [0, 1],
                 )
-            ).reshape(-1, (self.board_size * self.board_size * 2) + 2)
+            ).reshape(-1, (self.board_size * self.board_size * 2) + 2).astype(numpy.float32)
         if encode_type == Network.ENCODE_BOARD:
             grid = self.board
             red_board, blue_board, black_board = (
@@ -207,8 +207,8 @@ class Snort:
                 axis=1,
             ).reshape(-1, max(encode_board.shape) + max(encode_legal.shape))
 
-    def decode_state(self, policy, value):
-        policy, value = np.array(policy), np.array(value)
+    def decode_state(self, output_vector):
+        policy, value = output_vector[0], output_vector[1]
         legal_moves = self.get_legal_moves(self.current_player)
 
         # make policy the same shape as board
