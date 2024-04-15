@@ -263,7 +263,7 @@ class Agent:
 
     def best_move_to_do(self, probabilities):
         # most visits = best child (its what its)
-        max_index = torch.argmax(probabilities)
+        max_index = np.argmax(probabilities)
         move = np.unravel_index(max_index, probabilities.shape)
         return move
 
