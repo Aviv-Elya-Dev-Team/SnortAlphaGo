@@ -6,8 +6,9 @@ First of all, please run `python -m pip install -r requirements.txt`
 
 # Play
 to play the game:
-`python game.py <player_type> <encode_type_RED> <encode_type_BLUE>`
+`python Game.py <player_type> <encode_type_RED> <encode_type_BLUE>`
 
+example: `python Game.py 2 2`
 
 # Train
 to train the models run 
