@@ -1,4 +1,5 @@
 @echo off
+cd ../..
 :loop
-python python ../../Agent.py 2
+python Agent.py 2
 goto loop

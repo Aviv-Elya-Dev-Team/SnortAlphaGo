@@ -1,2 +1,3 @@
 @echo off
-python ../../game.py 2 2
+cd ../..
+python Game.py 2 2
