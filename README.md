@@ -15,6 +15,9 @@ to train the models run
 `python Agent.py <encode_type>`
 (stop it when you want, is infinite loop)
 
+# Scripts
+You can also run the scripts from the scripts folder, they work just like running the commands above for train and play
+
 # Info
 
 ### player_type:
