@@ -83,10 +83,16 @@ class SnortGameVisualizer:
 
         elif self.player_type == self.CPU_VS_CPU:
             self.agents[STARTING_PLAYER_COLOR] = Agent(
-                Network(model_type_cpu1, BOARD_SIZE), model_type_cpu1
+                self.game,
+                self.game.current_player,
+                Network(model_type_cpu1, BOARD_SIZE),
+                model_type_cpu1,
             )
             self.agents[SECOND_PLAYER_COLOR] = Agent(
-                Network(model_type_cpu2, BOARD_SIZE), model_type_cpu2
+                self.game,
+                self.game.current_player,
+                Network(model_type_cpu2, BOARD_SIZE),
+                model_type_cpu2,
             )
 
     def draw_board(self):
