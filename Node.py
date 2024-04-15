@@ -1,10 +1,7 @@
 import numpy as np, numpy
-from scipy.special import softmax
 from Snort import Snort
 from typing import List
 import copy
-
-ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
 
 class Node:

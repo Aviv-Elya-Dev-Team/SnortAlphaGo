@@ -1,12 +1,9 @@
 import pygame
-import sys
 from Snort import Snort
-from Agent import Agent, MCTSAgent
+from Agent import Agent
 from Network import Network
 import numpy as np, numpy
 from sys import argv
-import time
-import configparser
 from Config import Config
 
 # Define colors

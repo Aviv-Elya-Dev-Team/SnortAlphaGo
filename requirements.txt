@@ -1,5 +1,6 @@
-numpy==1.24.3
+numpy
 pygame==2.5.2
-scipy==1.13.0
-tensorflow==2.15
+torch
+torchvision
+torchaudio
 tqdm
