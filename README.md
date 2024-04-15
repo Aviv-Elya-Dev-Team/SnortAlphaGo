@@ -17,12 +17,16 @@ to train the models run
 
 # Info
 
-player_type:
-	0: player Vs player
-	1: cpu Vs cpu
-	2: player Vs cpu
+### player_type:
+0: player Vs player
 
-encode_type:
-	0: legal moves
-	1: board
-	2: both
+1: cpu Vs cpu
+
+2: player Vs cpu
+
+### encode_type:
+0: legal moves
+
+1: board
+
+2: both
