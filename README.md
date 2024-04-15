@@ -11,7 +11,7 @@ to play the game:
 
 # Train
 to train the models run 
-`one of train_<encode_type>.bat`
+`python Agent.py <encode_type>`
 (stop it when you want, is infinite loop)
 
 # Info
