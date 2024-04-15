@@ -1,17 +1,11 @@
 from Snort import Snort
-from Node import Node, ENCODE_BOTH, ENCODE_LEGAL, ENCODE_BOARD
 from Network import Network
+from Node import Node
 import numpy as np, numpy
 from os.path import exists
 from sys import argv
-import time
-import threading
-import random
-import tensorflow as tf
 from Config import Config
 from tqdm import trange
-
-progress = {"progress": 0, "thread_running": True}
 
 
 class MCTSAgent:
@@ -141,7 +135,7 @@ class Agent:
         game: Snort,
         starting_player,
         model: Network,
-        encode_type=ENCODE_LEGAL,
+        encode_type=Network.ENCODE_LEGAL,
     ) -> None:
 
         self.encode_type = encode_type
@@ -160,17 +154,16 @@ class Agent:
         )
         y_value_train = np.random.random((1, 1))
 
-        if not exists(f"models/model{self.encode_type}.keras"):
-            self.model.network.fit(
-                x_train,
-                [y_probabilities_train, y_value_train],
-                epochs=1,
-                verbose=0,
-                use_multiprocessing=True,
-            )
+        if not exists(f"models/model_{self.encode_type}_{self.game.board_size}.pth"):
+            games_history = []
+            state = self.game.encode_state(np.random.random((1, self.model.input_size)))
+            y_value_train = y_value_train[0]
+            games_history.append([(state, y_probabilities_train, y_value_train)])
+
+            self.model.train(games_history, epochs=1)
+
         else:
-            self.model.load_model(f"models/model{self.encode_type}.keras")
-            self.model.compile_model()
+            self.model = Network.load_model(self.encode_type, self.game.board_size)
 
     def best_move(self, num_iterations=200, num_epochs=10):
         root: Node = Node(self.game.clone())
@@ -270,30 +263,27 @@ class Agent:
     def learn(
         self,
         encode_type,
-        log_progress={},
         num_games=10,
         num_iterations=60,
-        num_epochs=10,
-        batch_size=5,
+        num_epochs=10,        
     ):
         games_history = []
+        for iteration in num_iterations:
+            # play games against self
+            for game_index in trange(num_games):
+                games_history += self.play_against_self(
+                    self.game.board_size,
+                    self.game.num_black_squares,
+                    num_iterations,
+                    num_epochs,
+                    encode_type,
+                )
 
-        # play games against self
-        for game_index in trange(num_games):
-            games_history += self.play_against_self(
-                self.game.board_size,
-                self.game.num_black_squares,
-                num_iterations,
-                num_epochs,
-                encode_type,
-            )
+            # train on the games played
+            self.model.train(games_history, num_epochs)
 
-        # train on the games played
-        for epoch in trange(num_epochs):
-            self.train(games_history, batch_size, num_epochs)
-
-        # save model
-        self.model.save_model(f"models/model{self.encode_type}.keras")
+            # save model
+            self.model.save_model()
 
     # play a game against yourself, and return a tuple (encoded_state, probabilities, outcome)
     # of the last move in the game, who won and what were the probability distributions
@@ -345,56 +335,6 @@ class Agent:
 
                 return result
 
-    def train(self, games_history, batch_size, num_epochs):
-        random.shuffle(games_history)
-        for batchIdx in range(0, len(games_history), batch_size):
-            # get batch sample
-            sample = games_history[
-                # TODO: change to min
-                batchIdx : max(len(games_history) - 1, batchIdx + batch_size)
-            ]
-
-            encoded_states, probabilities, winning_players = zip(*sample)
-
-            encoded_states, probabilities, winning_players = (
-                np.array(encoded_states),
-                np.array(probabilities),
-                np.array(winning_players).reshape(-1, 1),
-            )
-
-            encoded_states = encoded_states.reshape(
-                encoded_states.shape[0], encoded_states.shape[2]
-            )
-
-            # convert data to TensorFlow tensors
-            encoded_states_tensor = tf.convert_to_tensor(
-                encoded_states, dtype=tf.float32
-            )
-            probabilities_tensor = tf.convert_to_tensor(probabilities, dtype=tf.float32)
-            winning_players_tensor = tf.convert_to_tensor(
-                winning_players, dtype=tf.float32
-            )
-
-            # train the model
-            self.model.train(
-                encoded_states_tensor,
-                [probabilities_tensor, winning_players_tensor],
-                epochs=num_epochs,
-                batch_size=batch_size,
-            )
-
-
-def timer():
-    start_time = time.time()
-    while progress["thread_running"]:
-        elapsed_time = int(time.time() - start_time)
-        print(
-            f"\rtraining...{elapsed_time} | Moves made: {progress['progress']}",
-            end="",
-            flush=True,
-        )
-        time.sleep(1)
-
 
 def main():
 
@@ -404,26 +344,20 @@ def main():
     board_size = int(config.get("Snort", "board_size"))
     starting_player = int(config.get("GameUI", "starting_player_color"))
     num_black_squares = int(config.get("Snort", "num_black_squares"))
-    encode_type = ENCODE_LEGAL
+    encode_type = Network.ENCODE_LEGAL
 
     if len(argv) == 2:
         encode_type = int(argv[1])
+
     model = Network(encode_type, board_size)
 
-    if exists(f"models/model{encode_type}.keras"):
-        model.load_model(f"models/model{encode_type}.keras")
+    if exists(f"models/model_{encode_type}_{board_size}.pth"):
+        model.load_model(encode_type, board_size)
 
     game = Snort(starting_player, board_size, num_black_squares)
     agent = Agent(game, starting_player, model, encode_type)
 
-    # timer_thread = threading.Thread(target=timer)
-    # timer_thread.start()
-
-    agent.learn(encode_type, log_progress=progress)
-
-    # progress["thread_running"] = False
-    # timer_thread.join()  # Wait for the timer thread to finish
-    # print("\ndone")
+    agent.learn(encode_type)
 
 
 if __name__ == "__main__":
