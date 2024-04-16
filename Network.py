@@ -6,13 +6,14 @@ import torch.nn.functional as F
 import numpy
 from tqdm import trange
 
+
 # Define the neural network class
 class Network(nn.Module):
     ENCODE_LEGAL, ENCODE_BOARD, ENCODE_BOTH = 0, 1, 2
 
     def __init__(self, encode_type, board_size):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         super(Network, self).__init__()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.hidden_layer_size = board_size**2
         self.board_size = board_size
         self.encode_type = encode_type
@@ -22,7 +23,7 @@ class Network(nn.Module):
         self.shared_layer_2 = nn.Linear(self.hidden_layer_size, self.hidden_layer_size)
         self.head1 = nn.Linear(self.hidden_layer_size, self.hidden_layer_size)
         self.head2 = nn.Linear(self.hidden_layer_size, 1)
-        
+
         self.optimizer = optim.Adam(self.parameters())
         # Move the network to GPU if available
         if torch.cuda.is_available():
@@ -57,12 +58,22 @@ class Network(nn.Module):
                 ]
                 encoded_states, probabilities, winning_players = zip(*sample)
 
-                encoded_states, probabilities, winning_players = numpy.array(encoded_states), numpy.array(probabilities), numpy.array(winning_players).reshape(-1, 1)
+                encoded_states, probabilities, winning_players = (
+                    numpy.array(encoded_states),
+                    numpy.array(probabilities),
+                    numpy.array(winning_players).reshape(-1, 1),
+                )
 
                 encoded_states, probabilities, winning_players = (
-                    torch.tensor(encoded_states,dtype=torch.float32, device=self.device),
-                    torch.tensor(probabilities, dtype=torch.float32, device=self.device),
-                    torch.tensor(winning_players, dtype=torch.float32, device=self.device),  # .reshape(-1, 1),
+                    torch.tensor(
+                        encoded_states, dtype=torch.float32, device=self.device
+                    ),
+                    torch.tensor(
+                        probabilities, dtype=torch.float32, device=self.device
+                    ),
+                    torch.tensor(
+                        winning_players, dtype=torch.float32, device=self.device
+                    ),  # .reshape(-1, 1),
                 )
 
                 # train the model
@@ -94,5 +105,10 @@ class Network(nn.Module):
     @classmethod
     def load_model(cls, encode_type, board_size):
         model = cls(encode_type, board_size)
-        model.load_state_dict(torch.load(f"models/model_{encode_type}_{board_size}.pth"))
+        model.load_state_dict(
+            torch.load(
+                f"models/model_{encode_type}_{board_size}.pth",
+                map_location=torch.device(model.device),
+            )
+        )
         return model
