@@ -1,6 +1,6 @@
 import pygame
 from Snort import Snort
-from Agent import Agent
+from Agent import AlphaZeroAgent, MCTSAgent
 from Network import Network
 import numpy as np, numpy
 from sys import argv
@@ -26,7 +26,7 @@ SCREEN_WIDTH = int(config.get("GameUI", "screen_width"))
 SCREEN_HEIGHT = int(config.get("GameUI", "screen_height"))
 
 # staring player and colors
-STARTING_PLAYER_PVC = config.get("player_vs_cpu", "starting_player")
+STARTING_PLAYER_PVC = "Player"
 STARTING_PLAYER_COLOR = int(config.get("GameUI", "starting_player_color"))
 SECOND_PLAYER_COLOR = Snort.other_player(STARTING_PLAYER_COLOR)
 
@@ -51,24 +51,36 @@ class SnortGameVisualizer:
 
         self.agents = {STARTING_PLAYER_COLOR: None, SECOND_PLAYER_COLOR: None}
 
+        AgentType1 = AlphaZeroAgent if model_type_cpu1 <= 2 else MCTSAgent
+        AgentType2 = AlphaZeroAgent if model_type_cpu2 <= 2 else MCTSAgent
+
+        # Print info to console
+        starting_color = "red" if STARTING_PLAYER_COLOR == Snort.RED else "blue"
+        other_color = "red" if starting_color == "blue" else "blue"
+        starting_player_text = "Human"
+        second_player_text = "Human"
+        if player_type == 1:
+            starting_player_text = "Alpha Zero" if model_type_cpu1 <= 2 else "MCTS"
+            second_player_text = "Alpha Zero" if model_type_cpu2 <= 2 else "MCTS"
+        if player_type == 2:
+            second_player_text = "Alpha Zero" if model_type_cpu1 <= 2 else "MCTS"
+
+        print(f"{starting_color} player: {starting_player_text}")
+        print(f"{other_color} player: {second_player_text}")
+
         if self.player_type == self.PLAYER_VS_CPU:
             if STARTING_PLAYER_PVC == "Player":
                 self.agents[STARTING_PLAYER_COLOR] = "Player"
 
                 # Agent
-                self.agents[SECOND_PLAYER_COLOR] = Agent(
+                self.agents[SECOND_PLAYER_COLOR] = AgentType1(
                     self.game,
                     self.game.current_player,
                     Network(model_type_cpu1, self.game.board_size),
                     model_type_cpu1,
                 )
-
-                # MCTS Agent
-                # self.agents[STARTING_PLAYER] = MCTSAgent(
-                #     self.game, self.game.current_player
-                # )
             else:
-                self.agents[STARTING_PLAYER_COLOR] = Agent(
+                self.agents[STARTING_PLAYER_COLOR] = AgentType1(
                     self.game,
                     self.game.current_player,
                     Network(model_type_cpu1, self.game.board_size),
@@ -76,19 +88,14 @@ class SnortGameVisualizer:
                 )
                 self.agents[SECOND_PLAYER_COLOR] = "Player"
 
-                # MCTS Agent
-                # self.agents[STARTING_PLAYER] = MCTSAgent(
-                #     self.game, self.game.current_player
-                # )
-
         elif self.player_type == self.CPU_VS_CPU:
-            self.agents[STARTING_PLAYER_COLOR] = Agent(
+            self.agents[STARTING_PLAYER_COLOR] = AgentType1(
                 self.game,
                 self.game.current_player,
                 Network(model_type_cpu1, BOARD_SIZE),
                 model_type_cpu1,
             )
-            self.agents[SECOND_PLAYER_COLOR] = Agent(
+            self.agents[SECOND_PLAYER_COLOR] = AgentType2(
                 self.game,
                 self.game.current_player,
                 Network(model_type_cpu2, BOARD_SIZE),
@@ -155,18 +162,14 @@ class SnortGameVisualizer:
                     running = self.handle_events()
                 else:
                     if self.winner == -1:
-                        probabilities = self.agents[SECOND_PLAYER_COLOR].best_move()
-                        move = self.agents[SECOND_PLAYER_COLOR].best_move_to_do(
-                            probabilities
-                        )
+                        options = self.agents[SECOND_PLAYER_COLOR].search()
+                        move = self.agents[SECOND_PLAYER_COLOR].best_move(options)
                         self.handle_click(move, True)
 
             elif self.player_type == self.CPU_VS_CPU:
                 if self.winner == -1:
-                    probabilities = self.agents[self.game.current_player].best_move()
-                    move = self.agents[self.game.current_player].best_move_to_do(
-                        probabilities
-                    )
+                    options = self.agents[self.game.current_player].search()
+                    move = self.agents[self.game.current_player].best_move(options)
                     self.handle_click(move, True)
 
             self.draw_board()
