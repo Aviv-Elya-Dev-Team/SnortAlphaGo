@@ -9,12 +9,25 @@ from tqdm import trange
 import torch
 
 
-class MCTSAgent:
-    def __init__(self, game: Snort, starting_player) -> None:
-        self.game = game
+class Agent:
+    def __init__(self, *args) -> None:
+        pass
+
+    def search(self, num_iterations):
+        pass
+
+    def best_move(self, options):
+        pass
+
+
+class MCTSAgent(Agent):
+    def __init__(self, *args) -> None:
+        game, starting_player, *extra_args = args
+
+        self.game: Snort = game
         self.starting_player = starting_player
 
-    def best_move(self, num_iterations=30000):
+    def search(self, num_iterations=30000):
         root = Node(self.game.clone())
 
         C = 0.8
@@ -36,8 +49,8 @@ class MCTSAgent:
             self.update_backwards(new_node, outcome)
 
         return root.children
-    
-    def best_move_to_do(self,root_children):
+
+    def best_move(self, root_children):
         # return best child (ratio between wins and visits)
         best_child = max(
             root_children, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
@@ -133,19 +146,16 @@ class MCTSAgent:
         return best_child
 
 
-class Agent:
-    def __init__(
-        self,
-        game: Snort,
-        starting_player,
-        model: Network,
-        encode_type=Network.ENCODE_LEGAL,
-    ) -> None:
+class AlphaZeroAgent(Agent):
+    def __init__(self, *args) -> None:
+        game, starting_player, model, encode_type, *extra_args = args
+        if not encode_type:
+            encode_type = Network.ENCODE_LEGAL
 
         self.encode_type = encode_type
         self.starting_player = starting_player
-        self.game = game
-        self.model = model
+        self.game: Snort = game
+        self.model: Network = model
         self.init_model()
 
     def init_model(self):
@@ -170,7 +180,7 @@ class Agent:
             self.model = Network.load_model(self.encode_type, self.game.board_size)
 
     @torch.no_grad()
-    def best_move(self, num_iterations=1000):
+    def search(self, num_iterations=1000):
         root: Node = Node(self.game.clone())
 
         C = 0.8
@@ -187,7 +197,7 @@ class Agent:
             valid_moves = self.game.get_legal_moves(node.game.current_player)
             policy *= valid_moves
             policy /= np.sum(policy)
-            
+
             value = value.item()
 
             # expansion
@@ -264,7 +274,7 @@ class Agent:
 
         return best_child
 
-    def best_move_to_do(self, probabilities):
+    def best_move(self, probabilities):
         # most visits = best child (its what its)
         max_index = np.argmax(probabilities)
         move = np.unravel_index(max_index, probabilities.shape)
@@ -275,7 +285,7 @@ class Agent:
         encode_type,
         num_games=500,
         num_iterations=10,
-        num_epochs=100,        
+        num_epochs=100,
     ):
         for iteration in range(num_iterations):
             games_history = []
@@ -365,7 +375,7 @@ def main():
         model = Network.load_model(encode_type, board_size)
 
     game = Snort(starting_player, board_size, num_black_squares)
-    agent = Agent(game, starting_player, model, encode_type)
+    agent = AlphaZeroAgent(game, starting_player, model, encode_type)
 
     agent.learn(encode_type)
 
