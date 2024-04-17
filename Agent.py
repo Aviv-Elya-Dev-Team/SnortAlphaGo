@@ -35,9 +35,12 @@ class MCTSAgent:
             # back propagation
             self.update_backwards(new_node, outcome)
 
+        return root.children
+    
+    def best_move_to_do(self,root_children):
         # return best child (ratio between wins and visits)
         best_child = max(
-            root.children, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
+            root_children, key=lambda c: c.Q / c.visits if c.visits > 0 else 0
         )
 
         return best_child.game.move_history[-1]
