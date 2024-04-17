@@ -33,3 +33,5 @@ You can also run the scripts from the scripts folder, they work just like runnin
 1: board
 
 2: both
+
+3: MCTS
