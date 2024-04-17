@@ -26,7 +26,7 @@ SCREEN_WIDTH = int(config.get("GameUI", "screen_width"))
 SCREEN_HEIGHT = int(config.get("GameUI", "screen_height"))
 
 # staring player and colors
-STARTING_PLAYER_PVC = config.get("player_vs_cpu", "starting_player")
+STARTING_PLAYER_PVC = "Player"
 STARTING_PLAYER_COLOR = int(config.get("GameUI", "starting_player_color"))
 SECOND_PLAYER_COLOR = Snort.other_player(STARTING_PLAYER_COLOR)
 
