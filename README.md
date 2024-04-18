@@ -1,3 +1,6 @@
+# github link 
+`https://github.com/Aviv-Elya-Dev-Team/SnortAlphaGo`
+
 # SnortAlphaGo
 Snort game played by an AlphaGo inspired model
 
